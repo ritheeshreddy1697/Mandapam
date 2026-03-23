@@ -1,0 +1,15 @@
+{
+  "name": "agricure-dashboard",
+  "version": "1.0.0",
+  "description": "Agricure agriculture dashboard with a lightweight backend.",
+  "main": "backend/server.js",
+  "scripts": {
+    "start": "node backend/server.js"
+  },
+  "keywords": [
+    "agriculture",
+    "dashboard",
+    "backend"
+  ],
+  "license": "MIT"
+}
