@@ -1,3 +1,232 @@
+const defaultUiText = {
+  welcomePrefix: "Welcome,",
+  farmProfileLabel: "Farm Profile",
+  manageAccountLabel: "Manage account",
+  recommendationTableTitle: "Nutrient Table",
+  recommendationTableHeaders: {
+    nutrient: "Nutrient",
+    currentValue: "Current Value",
+    thresholdValues: "Threshold Values",
+    band: "Band"
+  },
+  recommendationColumnTitles: {
+    organic: "Organic Fertilizers",
+    inorganic: "Inorganic Fertilizers"
+  },
+  chat: {
+    launcherTitle: "Ask AgriCure AI",
+    launcherSubtitle: "Gemini-powered help",
+    eyebrow: "Field Assistant",
+    title: "AgriCure AI",
+    subtitle: "Ask about soil health, fertilizer choices, or sensor trends.",
+    assistantLabel: "AgriCure AI",
+    userLabel: "You",
+    statusLabel: "Status",
+    quickActions: {
+      soilSummaryLabel: "Soil summary",
+      soilSummaryPrompt: "Summarize the current soil health in simple words.",
+      fertilizerHelpLabel: "Fertilizer help",
+      fertilizerHelpPrompt: "What fertilizer should I prioritize right now?",
+      sensorInsightsLabel: "Sensor insights",
+      sensorInsightsPrompt: "What do the latest sensor readings suggest?"
+    },
+    inputPlaceholder: "Type your question...",
+    sendLabel: "Send",
+    welcomeMessage:
+      "I can explain the dashboard, summarize soil health, and help interpret fertilizer or sensor data.",
+    thinkingMessage: "Thinking through your farm data..."
+  },
+  recommendationWorkspace: {
+    toolExplorerTitle: "Explore Smart Agriculture Tools",
+    toolExplorerSubtitle:
+      "Select a feature to continue with AI-powered farming solutions",
+    cropSelection: {
+      title: "Select Crop",
+      subtitle:
+        "Choose a crop to unlock fertilizer recommendation and the rest of the planning tools.",
+      primaryLabel: "Select crop option",
+      primaryPlaceholder: "Choose crop",
+      vegetableOption: "Vegetables",
+      vegetableLabel: "Choose vegetable",
+      vegetablePlaceholder: "Select vegetable",
+      suggestedTitle: "Suggested Crops",
+      suggestedSubtitle: "Predicted crops from the current soil and sensor values.",
+      selectedTitle: "Selected Crop Economics",
+      selectedSubtitle: "Estimated grow cost and market price for the chosen crop.",
+      estimatedCostLabel: "Estimated cost to grow",
+      marketPriceLabel: "Market price",
+      familyLabel: "Crop family",
+      predictedTag: "Predicted fit",
+      selectAction: "Select crop",
+      unlockTitle: "Smart Agriculture Tools",
+      unlockSubtitle:
+        "Fertilizer recommendation and the rest of the tools unlock after crop selection.",
+      lockedMessage:
+        "Select any crop to unlock fertilizer recommendation and the remaining tools.",
+      unlockedMessagePrefix: "Tools unlocked for",
+      summaryPrefix: "Selected crop"
+    },
+    thresholdLabels: {
+      low: "Low",
+      medium: "Medium",
+      high: "High",
+      optimal: "Optimal",
+      target: "Target"
+    },
+    tools: [
+      {
+        key: "fertilizer",
+        badge: "ML-BASED",
+        title: "Fertilizer Recommendation",
+        description:
+          "Get ML-powered fertilizer recommendations for optimal crop growth",
+        tone: "green",
+        interactive: true
+      },
+      {
+        key: "irrigation",
+        badge: "ML-BASED",
+        title: "Irrigation Prediction",
+        description: "Smart water management with AI-based irrigation predictions",
+        tone: "blue",
+        interactive: false
+      },
+      {
+        key: "crop",
+        badge: "ML-BASED",
+        title: "Crop Prediction",
+        description: "Discover the best crops to grow based on soil and climate",
+        tone: "amber",
+        interactive: false
+      },
+      {
+        key: "pesticide",
+        badge: "GUIDE",
+        title: "Pesticide & Insecticide",
+        description: "Comprehensive protection guide for pest and disease control",
+        tone: "rose",
+        interactive: false
+      },
+      {
+        key: "price",
+        badge: "LIVE",
+        title: "Crop Price Prediction",
+        description: "Real-time market insights and price predictions",
+        tone: "violet",
+        interactive: false
+      },
+      {
+        key: "seed",
+        badge: "ML-BASED",
+        title: "Seed Variety Recommendation",
+        description: "Choose the best seed varieties for maximum yield",
+        tone: "teal",
+        interactive: false
+      },
+      {
+        key: "schemes",
+        badge: "INFO",
+        title: "Govt Schemes",
+        description: "Latest government schemes and subsidies for farmers",
+        tone: "indigo",
+        interactive: false
+      },
+      {
+        key: "illegal",
+        badge: "VERIFY",
+        title: "Illegal Fertilizers Check",
+        description: "Verify and check for counterfeit fertilizer products",
+        tone: "orange",
+        interactive: false
+      }
+    ],
+    fertilizer: {
+      backLabel: "Back",
+      badge: "ML-Powered",
+      title: "Fertilizer Recommendation",
+      subtitle:
+        "Select your farm and get ML-powered fertilizer recommendations based on real-time data",
+      autofillLabel: "Auto-fill with Sensor Data",
+      farmSelectionTitle: "Farm Selection",
+      farmSelectLabel: "Select Farm",
+      addFarmLabel: "Add Farm",
+      soilChemistryTitle: "Soil Chemistry",
+      sections: {
+        organicAlternativesTitle: "Organic Alternatives",
+        organicAlternativesSubtitle:
+          "Sustainable and eco-friendly fertilizer options",
+        applicationTimingTitle: "Application Timing",
+        applicationTimingSubtitle:
+          "Field-stage guidance for primary, secondary, and organic applications",
+        costAnalysisTitle: "Cost Analysis",
+        costAnalysisSubtitle:
+          "Estimated spend across chemical correction and organic soil support",
+        npkRatioLabel: "NPK Ratio:",
+        providesLabel: "Provides:",
+        whyUseLabel: "Why use this:",
+        chemicalLabel: "Chemical Fertilizers",
+        organicLabel: "Organic Alternatives",
+        fieldAreaLabel: "Field area"
+      },
+      fieldLabels: {
+        nitrogen: "Nitrogen (mg/kg)",
+        phosphorus: "Phosphorus (mg/kg)",
+        potassium: "Potassium (mg/kg)",
+        ph: "Soil pH",
+        moisture: "Soil Moisture (%)",
+        temperature: "Soil Temperature (C)",
+        conductivity: "Electrical Conductivity (uS/cm)"
+      }
+    }
+  },
+  realtimePanel: {
+    title: "Real Time Sensor Data",
+    soilTitle: "Soil Sensor Snapshot",
+    soilSubtitle: "Live nutrient and root-zone indicators from the latest report",
+    environmentTitle: "Environment Readings",
+    environmentSubtitle: "Current atmospheric conditions and field telemetry health",
+    trendTitle: "Soil NPK Levels Trend",
+    trendSubtitle: "Historical nutrient levels (last 24 hours)",
+    distributionTitle: "Environmental Conditions Distribution",
+    distributionSubtitle: "Current temperature, humidity and sunlight levels",
+    lastUpdatedLabel: "Last Updated",
+    sunlightLabel: "Sunlight Intensity",
+    temperatureLabel: "Temperature",
+    humidityLabel: "Humidity",
+    status: {
+      critical: "Critical",
+      warning: "Warning",
+      optimal: "Optimal"
+    }
+  },
+  overviewWeather: {
+    title: "Weather Data",
+    subtitle:
+      "Current field atmosphere snapshot with temperature, humidity and flux.",
+    chartTitle: "Weather Trend",
+    chartSubtitle:
+      "Live temperature, humidity and flux trend ending at the current reading.",
+    labels: {
+      temperature: "Temperature",
+      humidity: "Humidity",
+      flux: "Flux"
+    },
+    units: {
+      temperature: "°C",
+      humidity: "%",
+      flux: "lux"
+    },
+    rangeOptions: {
+      "24h": "24hrs",
+      "1w": "1 week",
+      "1m": "1 month",
+      "3m": "3 months",
+      "6m": "6 months",
+      "1y": "Year"
+    }
+  }
+};
+
 const defaultSiteData = {
   brand: "AgriCure",
   title: "Dashboard",
@@ -5,15 +234,16 @@ const defaultSiteData = {
     "Comprehensive soil analysis and fertilizer recommendations powered by real-time data and ML",
   selectedLanguage: "en",
   languages: [
-    { code: "en", label: "English" },
-    { code: "hi", label: "Hindi" },
-    { code: "te", label: "Telugu" }
+    { code: "en", label: "English", sarvamCode: "en-IN" },
+    { code: "hi", label: "हिंदी", sarvamCode: "hi-IN" },
+    { code: "te", label: "తెలుగు", sarvamCode: "te-IN" }
   ],
   profile: {
     name: "Test User",
     role: "Farm Manager",
     farm: "Mandapam Demonstration Farm"
-  }
+  },
+  uiText: defaultUiText
 };
 
 const supportedLanguageCodes = defaultSiteData.languages.map(
@@ -142,9 +372,64 @@ function buildSiteData(statePayload = {}) {
     subtitle: statePayload.subtitle || defaultSiteData.subtitle,
     selectedLanguage:
       statePayload.selectedLanguage || defaultSiteData.selectedLanguage,
+    languages: defaultSiteData.languages.map((language) => ({ ...language })),
     profile: {
       ...defaultSiteData.profile,
       ...(statePayload.profile || {})
+    },
+    uiText: {
+      ...defaultUiText,
+      recommendationTableHeaders: {
+        ...defaultUiText.recommendationTableHeaders
+      },
+      recommendationColumnTitles: {
+        ...defaultUiText.recommendationColumnTitles
+      },
+      chat: {
+        ...defaultUiText.chat,
+        quickActions: {
+          ...defaultUiText.chat.quickActions
+        }
+      },
+      recommendationWorkspace: {
+        ...defaultUiText.recommendationWorkspace,
+        cropSelection: {
+          ...defaultUiText.recommendationWorkspace.cropSelection
+        },
+        thresholdLabels: {
+          ...defaultUiText.recommendationWorkspace.thresholdLabels
+        },
+        tools: defaultUiText.recommendationWorkspace.tools.map((tool) => ({
+          ...tool
+        })),
+        fertilizer: {
+          ...defaultUiText.recommendationWorkspace.fertilizer,
+          sections: {
+            ...defaultUiText.recommendationWorkspace.fertilizer.sections
+          },
+          fieldLabels: {
+            ...defaultUiText.recommendationWorkspace.fertilizer.fieldLabels
+          }
+        }
+      },
+      realtimePanel: {
+        ...defaultUiText.realtimePanel,
+        status: {
+          ...defaultUiText.realtimePanel.status
+        }
+      },
+      overviewWeather: {
+        ...defaultUiText.overviewWeather,
+        labels: {
+          ...defaultUiText.overviewWeather.labels
+        },
+        units: {
+          ...defaultUiText.overviewWeather.units
+        },
+        rangeOptions: {
+          ...defaultUiText.overviewWeather.rangeOptions
+        }
+      }
     }
   };
 }

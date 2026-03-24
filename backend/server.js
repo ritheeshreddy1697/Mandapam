@@ -18,20 +18,27 @@ const {
   createSensorReadings,
   hasSupabaseConfig
 } = require("./supabase");
+const { generateChatReply } = require("./gemini");
+const { localizeSiteData, localizeDashboardData } = require("./sarvam");
 
 loadEnv();
 const PORT = process.env.PORT || 3000;
-const publicDir = path.join(__dirname, "..", "public");
+const distDir = path.join(__dirname, "..", "dist");
+const clientDir = distDir;
+const clientIndexPath = path.join(clientDir, "index.html");
 
 const mimeTypes = {
   ".html": "text/html; charset=UTF-8",
   ".css": "text/css; charset=UTF-8",
   ".js": "application/javascript; charset=UTF-8",
+  ".mjs": "application/javascript; charset=UTF-8",
   ".json": "application/json; charset=UTF-8",
   ".svg": "image/svg+xml; charset=UTF-8",
   ".png": "image/png",
   ".jpg": "image/jpeg",
-  ".ico": "image/x-icon"
+  ".ico": "image/x-icon",
+  ".woff": "font/woff",
+  ".woff2": "font/woff2"
 };
 
 const sensorMetricFields = [
@@ -74,6 +81,14 @@ function sendJson(res, statusCode, payload) {
     "Content-Length": Buffer.byteLength(body)
   });
   res.end(body);
+}
+
+function sendHtml(res, statusCode, markup) {
+  res.writeHead(statusCode, {
+    "Content-Type": "text/html; charset=UTF-8",
+    "Content-Length": Buffer.byteLength(markup)
+  });
+  res.end(markup);
 }
 
 function createHttpError(statusCode, message) {
@@ -494,11 +509,112 @@ function parseSensorReadingsPayload(payload) {
   return readings.map((reading, index) => parseSensorReading(reading, index));
 }
 
+function parseChatHistory(payload) {
+  if (payload === undefined) {
+    return [];
+  }
+
+  if (!Array.isArray(payload)) {
+    throw createHttpError(400, "history must be an array.");
+  }
+
+  return payload.slice(-10).map((entry, index) => {
+    if (!isPlainObject(entry)) {
+      throw createHttpError(400, `history item ${index + 1} must be an object.`);
+    }
+
+    const role = readTextField(pickField(entry, ["role"]), `history[${index}].role`, {
+      required: true,
+      maxLength: 20
+    });
+    const text = readTextField(pickField(entry, ["text"]), `history[${index}].text`, {
+      required: true,
+      maxLength: 2000
+    });
+
+    if (!["user", "assistant", "model"].includes(role)) {
+      throw createHttpError(
+        400,
+        `history item ${index + 1} has an unsupported role.`
+      );
+    }
+
+    return { role, text };
+  });
+}
+
+function parseChatPayload(payload) {
+  if (!isPlainObject(payload)) {
+    throw createHttpError(400, "Chat payload must be a JSON object.");
+  }
+
+  return {
+    message: readTextField(pickField(payload, ["message", "prompt"]), "message", {
+      required: true,
+      maxLength: 2000
+    }),
+    history: parseChatHistory(pickField(payload, ["history"]))
+  };
+}
+
+function sendMissingBuildPage(res) {
+  sendHtml(
+    res,
+    503,
+    `<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Frontend Build Required</title>
+    <style>
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        padding: 24px;
+        font-family: Arial, sans-serif;
+        background: #f4efe3;
+        color: #17212b;
+      }
+
+      main {
+        max-width: 640px;
+        padding: 32px;
+        border-radius: 24px;
+        background: #ffffff;
+        box-shadow: 0 20px 50px rgba(22, 34, 57, 0.08);
+      }
+
+      code {
+        padding: 2px 6px;
+        border-radius: 8px;
+        background: #eef4e7;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Frontend build required</h1>
+      <p>The React frontend was not found in <code>dist/</code>.</p>
+      <p>Run <code>npm run build</code> and then restart the server.</p>
+    </main>
+  </body>
+</html>`
+  );
+}
+
 function serveFile(res, filePath) {
   fs.readFile(filePath, (error, content) => {
     if (error) {
       if (error.code === "ENOENT") {
-        serveFile(res, path.join(publicDir, "index.html"));
+        if (filePath === clientIndexPath) {
+          sendMissingBuildPage(res);
+          return;
+        }
+
+        serveFile(res, clientIndexPath);
         return;
       }
 
@@ -520,6 +636,11 @@ function sendRouteError(res, error, fallbackMessage) {
   });
 }
 
+function logWarning(scope, error) {
+  const message = error instanceof Error ? error.message : String(error);
+  console.warn(`[server:${scope}] ${message}`);
+}
+
 const server = http.createServer(async (req, res) => {
   const requestUrl = new URL(req.url, `http://${req.headers.host}`);
   const pathname = requestUrl.pathname;
@@ -527,7 +648,15 @@ const server = http.createServer(async (req, res) => {
   if (pathname === "/api/site-data" && req.method === "GET") {
     try {
       const siteData = await getSiteData();
-      sendJson(res, 200, siteData);
+      let localizedSiteData = siteData;
+
+      try {
+        localizedSiteData = await localizeSiteData(siteData, siteData.selectedLanguage);
+      } catch (error) {
+        logWarning("site-translation", error);
+      }
+
+      sendJson(res, 200, localizedSiteData);
     } catch (error) {
       sendRouteError(res, error, "Unable to load site data.");
     }
@@ -536,8 +665,22 @@ const server = http.createServer(async (req, res) => {
 
   if (pathname === "/api/dashboard" && req.method === "GET") {
     try {
-      const dashboardData = await getDashboardData();
-      sendJson(res, 200, dashboardData);
+      const [siteData, dashboardData] = await Promise.all([
+        getSiteData(),
+        getDashboardData()
+      ]);
+      let localizedDashboardData = dashboardData;
+
+      try {
+        localizedDashboardData = await localizeDashboardData(
+          dashboardData,
+          siteData.selectedLanguage
+        );
+      } catch (error) {
+        logWarning("dashboard-translation", error);
+      }
+
+      sendJson(res, 200, localizedDashboardData);
     } catch (error) {
       sendRouteError(res, error, "Unable to load dashboard data.");
     }
@@ -625,10 +768,23 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
-  const requestedFile = pathname === "/" ? "index.html" : pathname.slice(1);
-  const resolvedPath = path.resolve(publicDir, requestedFile);
+  if (pathname === "/api/chat" && req.method === "POST") {
+    try {
+      const payload = await parseJsonBody(req);
+      const chatRequest = parseChatPayload(payload);
+      const result = await generateChatReply(chatRequest);
 
-  if (!resolvedPath.startsWith(publicDir)) {
+      sendJson(res, 200, result);
+    } catch (error) {
+      sendRouteError(res, error, "Unable to generate chatbot response.");
+    }
+    return;
+  }
+
+  const requestedFile = pathname === "/" ? "index.html" : pathname.slice(1);
+  const resolvedPath = path.resolve(clientDir, requestedFile);
+
+  if (!resolvedPath.startsWith(clientDir)) {
     sendJson(res, 403, { error: "Access denied." });
     return;
   }
