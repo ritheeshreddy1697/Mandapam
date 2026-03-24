@@ -18,6 +18,7 @@ import {
   buildWeatherTrendSeries,
   formatCurrency,
   formatDateTime,
+  formatDateLong,
   formatNumber,
   formatTimeOnly,
   metricStatusTone,
@@ -25,10 +26,14 @@ import {
   severityTone
 } from "./lib/dashboard";
 
-const NAV_ITEMS = [
+const NAV_ITEM_CONFIG = [
   {
     path: "/",
     label: "Overview"
+  },
+  {
+    path: "/action-planner",
+    label: "Action Planner"
   },
   {
     path: "/recommendations",
@@ -38,6 +43,17 @@ const NAV_ITEMS = [
     path: "/sensor-data",
     label: "Sensor Data"
   }
+];
+
+const ACTION_PLANNER_OPTIONS = [
+  ...PRIMARY_CROP_OPTIONS.filter((item) => item.key !== "vegetables").map((item) => ({
+    key: item.key,
+    label: item.label
+  })),
+  ...VEGETABLE_CROP_OPTIONS.map((item) => ({
+    key: item.key,
+    label: `${item.label} (Vegetable)`
+  }))
 ];
 
 const FALLBACK_UI_TEXT = {
@@ -183,6 +199,414 @@ const FALLBACK_UI_TEXT = {
   }
 };
 
+const TRANSLATION_PATTERNS = {
+  hi: [
+    ["Startup-grade agronomy", "स्टार्टअप-ग्रेड कृषि"],
+    ["Startup-ready agricultural intelligence for every field decision.", "हर खेत निर्णय के लिए तैयार कृषि बुद्धिमत्ता।"],
+    ["Startup-ready", "तैयार"],
+    ["agricultural intelligence", "कृषि बुद्धिमत्ता"],
+    ["for every field decision.", "हर खेत निर्णय के लिए।"],
+    ["Open Recommendations", "सिफारिशें खोलें"],
+    ["Open Sensor Data", "सेंसर डेटा खोलें"],
+    ["Back to Overview", "सारांश पर वापस जाएं"],
+    ["Overview", "सारांश"],
+    ["Action Planner", "कार्य योजना"],
+    ["Recommendations", "सिफारिशें"],
+    ["Sensor Data", "सेंसर डेटा"],
+    ["Language", "भाषा"],
+    ["Role", "भूमिका"],
+    ["Farm command", "फार्म कमांड"],
+    ["Soil health", "मिट्टी का स्वास्थ्य"],
+    ["Humidity", "आर्द्रता"],
+    ["Live atmosphere", "लाइव वातावरण"],
+    ["Last report", "अंतिम रिपोर्ट"],
+    ["Climate snapshot", "मौसम स्नैपशॉट"],
+    ["Weather trend", "मौसम रुझान"],
+    ["Navigation", "नेविगेशन"],
+    ["Field feed", "फील्ड फ़ीड"],
+    ["Latest observations", "नवीनतम अवलोकन"],
+    ["Open a dedicated page for the next task", "अगले कार्य के लिए अलग पेज खोलें"],
+    ["Recommendations and sensor operations now live on their own focused pages.", "सिफारिशें और सेंसर कार्य अब अपने अलग पेजों पर उपलब्ध हैं।"],
+    ["Nutrient, crop, and planning decisions", "पोषक, फसल और योजना निर्णय"],
+    ["Move into a dedicated workspace for crop fit, fertilizer planning, and operational guidance.", "फसल उपयुक्तता, उर्वरक योजना और संचालन मार्गदर्शन के लिए अलग कार्यक्षेत्र खोलें।"],
+    ["Go to Recommendations", "सिफारिशों पर जाएं"],
+    ["Realtime telemetry and environmental monitoring", "रियलटाइम टेलीमेट्री और पर्यावरण निगरानी"],
+    ["Open the sensor page to inspect NPK drift, environmental distribution, and live feed notes.", "NPK परिवर्तन, पर्यावरण वितरण और लाइव नोट्स देखने के लिए सेंसर पेज खोलें।"],
+    ["Go to Sensor Data", "सेंसर डेटा पर जाएं"],
+    ["Short operational notes pulled from the current realtime stream.", "वर्तमान रियलटाइम स्ट्रीम से लिए गए संक्षिप्त संचालन नोट्स।"],
+    ["Recommendation studio", "सिफारिश केंद्र"],
+    ["Dedicated planning for", "के लिए समर्पित योजना"],
+    ["crop fit, fertilizer, and next actions", "फसल उपयुक्तता, उर्वरक और अगले कार्य"],
+    ["Selected crop", "चयनित फसल"],
+    ["Top organic", "शीर्ष जैविक"],
+    ["Top inorganic", "शीर्ष अकार्बनिक"],
+    ["Pending", "लंबित"],
+    ["No recommendation", "कोई सिफारिश नहीं"],
+    ["Review data", "डेटा देखें"],
+    ["Primary crop", "मुख्य फसल"],
+    ["Vegetable crop", "सब्जी फसल"],
+    ["Predicted cereals", "अनुमानित अनाज"],
+    ["Vegetable prediction", "सब्जी अनुमान"],
+    ["Select a crop to unlock the workspace", "वर्कस्पेस खोलने के लिए फसल चुनें"],
+    ["Active recommendation", "सक्रिय सिफारिश"],
+    ["Use the field-fit crop shortlist to open the recommendation workspace instantly.", "उपयुक्त फसल सूची से तुरंत सिफारिश वर्कस्पेस खोलें।"],
+    ["Use best-fit crop", "सर्वश्रेष्ठ फसल चुनें"],
+    ["Current sensor values", "वर्तमान सेंसर मान"],
+    ["Nutrient correction", "पोषक सुधार"],
+    ["Primary chemical correction options for the selected crop.", "चयनित फसल के लिए मुख्य रासायनिक सुधार विकल्प।"],
+    ["Soil support", "मिट्टी समर्थन"],
+    ["Organic fertilizer options that support nutrient recovery and soil structure.", "पोषक पुनर्प्राप्ति और मिट्टी संरचना के लिए जैविक उर्वरक विकल्प।"],
+    ["Inorganic", "अकार्बनिक"],
+    ["Organic", "जैविक"],
+    ["Planner note", "योजना नोट"],
+    ["Action planner", "कार्य योजना"],
+    ["Turn a", "एक"],
+    ["crop and seeding date", "फसल और बुवाई तिथि"],
+    ["into a field action calendar.", "को खेत कार्य कैलेंडर में बदलें।"],
+    ["Select the crop, enter the seeding date, and get a dated action plan with fertilizer, protection, and weeding events marked on the calendar.", "फसल चुनें, बुवाई तिथि दर्ज करें और उर्वरक, सुरक्षा तथा निराई कार्यों वाला दिनांकित कैलेंडर प्लान पाएं।"],
+    ["Planner crop", "योजना फसल"],
+    ["Choose crop", "फसल चुनें"],
+    ["Planning context", "योजना संदर्भ"],
+    ["Seeding date", "बुवाई तिथि"],
+    ["Start of schedule", "कार्यक्रम की शुरुआत"],
+    ["Planned actions", "योजित कार्य"],
+    ["Calendar markers", "कैलेंडर चिह्न"],
+    ["Calendar", "कैलेंडर"],
+    ["Action calendar", "कार्य कैलेंडर"],
+    ["The generated field actions are marked directly on the calendar.", "तैयार किए गए खेत कार्य सीधे कैलेंडर पर अंकित हैं।"],
+    ["Questions", "प्रश्न"],
+    ["Plan the crop schedule", "फसल कार्यक्रम बनाएं"],
+    ["Answer the crop and seeding date questions to generate the farm action timeline.", "फार्म कार्य समयरेखा बनाने के लिए फसल और बुवाई तिथि के प्रश्नों का उत्तर दें।"],
+    ["Question 1", "प्रश्न 1"],
+    ["Enter the crop", "फसल दर्ज करें"],
+    ["Suggested crops", "सुझाई गई फसलें"],
+    ["Question 2", "प्रश्न 2"],
+    ["Enter the seeding date", "बुवाई तिथि दर्ज करें"],
+    ["Generated plan", "तैयार योजना"],
+    ["Follow the dated actions below.", "नीचे दिए गए दिनांकित कार्यों का पालन करें।"],
+    ["Assigned actions", "निर्धारित कार्य"],
+    ["Close", "बंद करें"],
+    ["Done", "पूर्ण"],
+    ["Not done", "पूर्ण नहीं"],
+    ["Reminder", "रिमाइंडर"],
+    ["is still not done.", "अभी भी पूरा नहीं हुआ है।"],
+    ["Reminder active every 3 hours from", "हर 3 घंटे में रिमाइंडर सक्रिय रहेगा"],
+    ["until you mark it done.", "जब तक आप इसे पूरा चिह्नित नहीं करते।"],
+    ["Prev", "पिछला"],
+    ["Next", "अगला"],
+    ["All", "सभी"],
+    ["Sun", "रवि"],
+    ["Mon", "सोम"],
+    ["Tue", "मंगल"],
+    ["Wed", "बुध"],
+    ["Thu", "गुरु"],
+    ["Fri", "शुक्र"],
+    ["Sat", "शनि"],
+    ["No actions", "कोई कार्य नहीं"],
+    ["Sensor operations", "सेंसर संचालन"],
+    ["A focused telemetry page for", "के लिए एक केंद्रित टेलीमेट्री पेज"],
+    ["live field monitoring", "लाइव खेत निगरानी"],
+    ["Last sync", "अंतिम सिंक"],
+    ["Environment node", "पर्यावरण नोड"],
+    ["Root zone", "रूट ज़ोन"],
+    ["Live root temperature", "लाइव रूट तापमान"],
+    ["Environment readings", "पर्यावरण रीडिंग"],
+    ["NPK movement", "NPK गति"],
+    ["Environmental balance", "पर्यावरण संतुलन"],
+    ["Realtime feed", "रियलटाइम फ़ीड"],
+    ["Operational notes", "संचालन नोट्स"],
+    ["A dedicated page for the sensor stream and the latest field signals.", "सेंसर स्ट्रीम और नवीनतम खेत संकेतों के लिए समर्पित पेज।"],
+    ["seeded on", "की बुवाई हुई"],
+    ["per quintal", "प्रति क्विंटल"],
+    ["(Vegetable)", "(सब्जी)"],
+    ["Booting the field workspace", "फील्ड वर्कस्पेस शुरू हो रहा है"],
+    ["Loading soil context, recommendations, and live telemetry.", "मिट्टी संदर्भ, सिफारिशें और लाइव टेलीमेट्री लोड हो रही हैं।"],
+    ["Unable to load the dashboard", "डैशबोर्ड लोड नहीं हो सका"],
+    ["Please make sure the backend server is running and try again.", "कृपया सुनिश्चित करें कि बैकएंड सर्वर चल रहा है और फिर प्रयास करें।"],
+    ["Retry", "पुनः प्रयास"],
+    ["Pest gallery", "कीट गैलरी"],
+    ["Common pests and disease references", "सामान्य कीट और रोग संदर्भ"],
+    ["Web-loaded visual references for different pests or diseases linked to the selected crop.", "चयनित फसल से जुड़े विभिन्न कीटों या रोगों के वेब-लोडेड दृश्य संदर्भ।"],
+    ["Loading pest photo...", "कीट फोटो लोड हो रही है..."],
+    ["Photo unavailable right now.", "फोटो अभी उपलब्ध नहीं है।"],
+    ["Pest", "कीट"],
+    ["Search topic:", "खोज विषय:"],
+    ["Source: Wikipedia", "स्रोत: विकिपीडिया"],
+    ["Open assistant", "सहायक खोलें"],
+    ["Sending...", "भेजा जा रहा है..."],
+    ["Seeding", "बुवाई"],
+    ["Irrigation", "सिंचाई"],
+    ["Fertilizer", "उर्वरक"],
+    ["Weeding", "निराई"],
+    ["Pesticide", "कीटनाशक"],
+    ["Monitoring", "निगरानी"],
+    ["Harvest", "कटाई"],
+    ["Nitrogen", "नाइट्रोजन"],
+    ["Phosphorus", "फॉस्फोरस"],
+    ["Potassium", "पोटैशियम"],
+    ["Content", "सामग्री"],
+    ["Rate", "मात्रा"],
+    ["Price range", "मूल्य सीमा"],
+    ["Cost / acre", "लागत / एकड़"],
+    ["Total plan", "कुल योजना"],
+    ["Live mix", "लाइव मिश्रण"],
+    ["Paddy", "धान"],
+    ["Wheat", "गेहूं"],
+    ["Barley", "जौ"],
+    ["Corn", "मक्का"],
+    ["Sorghum", "ज्वार"],
+    ["Millet", "बाजरा"],
+    ["Oats", "जई"],
+    ["Vegetables", "सब्जियां"],
+    ["Tomato", "टमाटर"],
+    ["Onion", "प्याज"],
+    ["Potato", "आलू"],
+    ["Brinjal", "बैंगन"],
+    ["Okra", "भिंडी"],
+    ["Chilli", "मिर्च"],
+    ["Cabbage", "पत्ता गोभी"],
+    ["Cauliflower", "फूलगोभी"],
+    ["Carrot", "गाजर"],
+    ["Cucumber", "खीरा"],
+    ["Spinach", "पालक"],
+    ["Beans", "बीन्स"],
+    ["Peas", "मटर"],
+    ["Bottle Gourd", "लौकी"],
+    ["Pumpkin", "कद्दू"],
+    ["Cereal", "अनाज"],
+    ["Vegetable", "सब्जी"],
+    ["Healthy", "स्वस्थ"],
+    ["Optimal", "उत्तम"],
+    ["Warning", "चेतावनी"],
+    ["Critical", "गंभीर"]
+  ],
+  te: [
+    ["Startup-grade agronomy", "స్టార్టప్ స్థాయి వ్యవసాయం"],
+    ["Startup-ready agricultural intelligence for every field decision.", "ప్రతి పొల నిర్ణయానికి సిద్ధమైన వ్యవసాయ మేధస్సు."],
+    ["Startup-ready", "సిద్ధమైన"],
+    ["agricultural intelligence", "వ్యవసాయ మేధస్సు"],
+    ["for every field decision.", "ప్రతి పొల నిర్ణయానికి."],
+    ["Open Recommendations", "సిఫార్సులు తెరవండి"],
+    ["Open Sensor Data", "సెన్సార్ డేటా తెరవండి"],
+    ["Back to Overview", "సారాంశానికి తిరిగి వెళ్లండి"],
+    ["Overview", "సారాంశం"],
+    ["Action Planner", "చర్యల ప్రణాళిక"],
+    ["Recommendations", "సిఫార్సులు"],
+    ["Sensor Data", "సెన్సార్ డేటా"],
+    ["Language", "భాష"],
+    ["Role", "పాత్ర"],
+    ["Farm command", "ఫార్మ్ కమాండ్"],
+    ["Soil health", "మట్టి ఆరోగ్యం"],
+    ["Humidity", "ఆర్ద్రత"],
+    ["Live atmosphere", "ప్రత్యక్ష వాతావరణం"],
+    ["Last report", "చివరి నివేదిక"],
+    ["Climate snapshot", "వాతావరణ స్నాప్‌షాట్"],
+    ["Weather trend", "వాతావరణ ధోరణి"],
+    ["Navigation", "నావిగేషన్"],
+    ["Field feed", "ఫీల్డ్ ఫీడ్"],
+    ["Latest observations", "తాజా పరిశీలనలు"],
+    ["Open a dedicated page for the next task", "తర్వాతి పనికి ప్రత్యేక పేజీ తెరవండి"],
+    ["Recommendations and sensor operations now live on their own focused pages.", "సిఫార్సులు మరియు సెన్సార్ కార్యాచరణలు ఇప్పుడు వేరే పేజీల్లో ఉన్నాయి."],
+    ["Nutrient, crop, and planning decisions", "పోషకాలు, పంట, ప్రణాళిక నిర్ణయాలు"],
+    ["Move into a dedicated workspace for crop fit, fertilizer planning, and operational guidance.", "పంట సరిపోక, ఎరువు ప్రణాళిక, కార్యాచరణ మార్గదర్శకత్వం కోసం ప్రత్యేక వర్క్‌స్పేస్ తెరవండి."],
+    ["Go to Recommendations", "సిఫార్సుల వద్దకు వెళ్లండి"],
+    ["Realtime telemetry and environmental monitoring", "రియల్‌టైమ్ టెలిమెట్రీ మరియు పర్యావరణ పరిశీలన"],
+    ["Open the sensor page to inspect NPK drift, environmental distribution, and live feed notes.", "NPK మార్పు, పర్యావరణ పంపిణీ, ప్రత్యక్ష గమనికలను చూడటానికి సెన్సార్ పేజీ తెరవండి."],
+    ["Go to Sensor Data", "సెన్సార్ డేటాకు వెళ్లండి"],
+    ["Short operational notes pulled from the current realtime stream.", "ప్రస్తుత రియల్‌టైమ్ స్ట్రీమ్ నుండి చిన్న కార్యాచరణ గమనికలు."],
+    ["Recommendation studio", "సిఫార్సుల కేంద్రం"],
+    ["Dedicated planning for", "దీనికోసం ప్రత్యేక ప్రణాళిక"],
+    ["crop fit, fertilizer, and next actions", "పంట సరిపోక, ఎరువు, తదుపరి చర్యలు"],
+    ["Selected crop", "ఎంచుకున్న పంట"],
+    ["Top organic", "ప్రధాన సేంద్రియ"],
+    ["Top inorganic", "ప్రధాన రసాయనిక"],
+    ["Pending", "వేచి ఉంది"],
+    ["No recommendation", "సిఫార్సు లేదు"],
+    ["Review data", "డేటా చూడండి"],
+    ["Primary crop", "ప్రధాన పంట"],
+    ["Vegetable crop", "కూరగాయ పంట"],
+    ["Predicted cereals", "అంచనా ధాన్యాలు"],
+    ["Vegetable prediction", "కూరగాయ అంచనా"],
+    ["Select a crop to unlock the workspace", "వర్క్‌స్పేస్‌ను తెరవడానికి పంటను ఎంచుకోండి"],
+    ["Active recommendation", "సక్రియ సిఫార్సు"],
+    ["Use the field-fit crop shortlist to open the recommendation workspace instantly.", "సిఫార్సుల వర్క్‌స్పేస్ వెంటనే తెరవడానికి సరిపడే పంట జాబితాను ఉపయోగించండి."],
+    ["Use best-fit crop", "ఉత్తమ పంటను ఉపయోగించండి"],
+    ["Current sensor values", "ప్రస్తుత సెన్సార్ విలువలు"],
+    ["Nutrient correction", "పోషకాల సరిదిద్దడం"],
+    ["Primary chemical correction options for the selected crop.", "ఎంచుకున్న పంటకు ప్రధాన రసాయన సరిదిద్దే ఎంపికలు."],
+    ["Soil support", "మట్టి మద్దతు"],
+    ["Organic fertilizer options that support nutrient recovery and soil structure.", "పోషక పునరుద్ధరణ మరియు మట్టి నిర్మాణానికి మద్దతు ఇచ్చే సేంద్రియ ఎరువులు."],
+    ["Inorganic", "రసాయనిక"],
+    ["Organic", "సేంద్రియ"],
+    ["Planner note", "ప్రణాళిక గమనిక"],
+    ["Action planner", "చర్యల ప్రణాళిక"],
+    ["Turn a", "ఒక"],
+    ["crop and seeding date", "పంట మరియు విత్తన తేదీ"],
+    ["into a field action calendar.", "ను పొల చర్యల క్యాలెండర్‌గా మార్చండి."],
+    ["Select the crop, enter the seeding date, and get a dated action plan with fertilizer, protection, and weeding events marked on the calendar.", "పంటను ఎంచుకుని, విత్తన తేదీని నమోదు చేసి, ఎరువు, రక్షణ, కలుపు చర్యలతో తేదీ వారీ ప్రణాళికను పొందండి."],
+    ["Planner crop", "ప్రణాళిక పంట"],
+    ["Choose crop", "పంటను ఎంచుకోండి"],
+    ["Planning context", "ప్రణాళిక సందర్భం"],
+    ["Seeding date", "విత్తన తేదీ"],
+    ["Start of schedule", "షెడ్యూల్ ప్రారంభం"],
+    ["Planned actions", "ప్రణాళిక చర్యలు"],
+    ["Calendar markers", "క్యాలెండర్ గుర్తులు"],
+    ["Calendar", "క్యాలెండర్"],
+    ["Action calendar", "చర్యల క్యాలెండర్"],
+    ["The generated field actions are marked directly on the calendar.", "సృష్టించిన పొల చర్యలు నేరుగా క్యాలెండర్‌లో గుర్తించబడ్డాయి."],
+    ["Questions", "ప్రశ్నలు"],
+    ["Plan the crop schedule", "పంట షెడ్యూల్ రూపొందించండి"],
+    ["Answer the crop and seeding date questions to generate the farm action timeline.", "ఫార్మ్ చర్యల టైమ్‌లైన్ రూపొందించడానికి పంట మరియు విత్తన తేదీ ప్రశ్నలకు సమాధానం ఇవ్వండి."],
+    ["Question 1", "ప్రశ్న 1"],
+    ["Enter the crop", "పంటను నమోదు చేయండి"],
+    ["Suggested crops", "సూచించిన పంటలు"],
+    ["Question 2", "ప్రశ్న 2"],
+    ["Enter the seeding date", "విత్తన తేదీని నమోదు చేయండి"],
+    ["Generated plan", "సృష్టించిన ప్రణాళిక"],
+    ["Follow the dated actions below.", "క్రింద ఉన్న తేదీ వారీ చర్యలను అనుసరించండి."],
+    ["Assigned actions", "కేటాయించిన చర్యలు"],
+    ["Close", "మూసివేయండి"],
+    ["Done", "పూర్తైంది"],
+    ["Not done", "పూర్తి కాలేదు"],
+    ["Reminder", "గుర్తుచూపు"],
+    ["is still not done.", "ఇంకా పూర్తి కాలేదు."],
+    ["Reminder active every 3 hours from", "ప్రతి 3 గంటలకు గుర్తుచూపు ప్రారంభం"],
+    ["until you mark it done.", "మీరు పూర్తి చేసినట్లు గుర్తించే వరకు."],
+    ["Prev", "ముందు"],
+    ["Next", "తర్వాత"],
+    ["All", "అన్ని"],
+    ["Sun", "ఆది"],
+    ["Mon", "సోమ"],
+    ["Tue", "మంగళ"],
+    ["Wed", "బుధ"],
+    ["Thu", "గురు"],
+    ["Fri", "శుక్ర"],
+    ["Sat", "శని"],
+    ["No actions", "చర్యలు లేవు"],
+    ["Sensor operations", "సెన్సార్ కార్యాచరణలు"],
+    ["A focused telemetry page for", "దీనికోసం కేంద్రీకృత టెలిమెట్రీ పేజీ"],
+    ["live field monitoring", "ప్రత్యక్ష పొల పరిశీలన"],
+    ["Last sync", "చివరి సమకాలీకరణ"],
+    ["Environment node", "పర్యావరణ నోడ్"],
+    ["Root zone", "రూట్ జోన్"],
+    ["Live root temperature", "ప్రత్యక్ష రూట్ ఉష్ణోగ్రత"],
+    ["Environment readings", "పర్యావరణ రీడింగ్స్"],
+    ["NPK movement", "NPK చలనం"],
+    ["Environmental balance", "పర్యావరణ సమతుల్యం"],
+    ["Realtime feed", "రియల్‌టైమ్ ఫీడ్"],
+    ["Operational notes", "కార్యాచరణ గమనికలు"],
+    ["A dedicated page for the sensor stream and the latest field signals.", "సెన్సార్ స్ట్రీమ్ మరియు తాజా పొల సంకేతాల కోసం ప్రత్యేక పేజీ."],
+    ["seeded on", "నాటిన తేదీ"],
+    ["per quintal", "క్వింటాల్‌కు"],
+    ["(Vegetable)", "(కూరగాయ)"],
+    ["Booting the field workspace", "ఫీల్డ్ వర్క్‌స్పేస్ ప్రారంభమవుతోంది"],
+    ["Loading soil context, recommendations, and live telemetry.", "మట్టి సమాచారం, సిఫార్సులు, ప్రత్యక్ష టెలిమెట్రీ లోడ్ అవుతోంది."],
+    ["Unable to load the dashboard", "డ్యాష్‌బోర్డ్‌ను లోడ్ చేయలేకపోయాం"],
+    ["Please make sure the backend server is running and try again.", "దయచేసి బ్యాక్‌ఎండ్ సర్వర్ నడుస్తోందో చూసి మళ్లీ ప్రయత్నించండి."],
+    ["Retry", "మళ్లీ ప్రయత్నించండి"],
+    ["Pest gallery", "కీటక గ్యాలరీ"],
+    ["Common pests and disease references", "సాధారణ కీటకాలు మరియు రోగ సూచనలు"],
+    ["Web-loaded visual references for different pests or diseases linked to the selected crop.", "ఎంచుకున్న పంటకు సంబంధించిన కీటకాలు లేదా రోగాలకు వెబ్ నుండి లోడ్ అయ్యే దృశ్య సూచనలు."],
+    ["Loading pest photo...", "కీటక చిత్రం లోడ్ అవుతోంది..."],
+    ["Photo unavailable right now.", "చిత్రం ప్రస్తుతం అందుబాటులో లేదు."],
+    ["Pest", "కీటకం"],
+    ["Search topic:", "శోధన విషయం:"],
+    ["Source: Wikipedia", "మూలం: వికీపీడియా"],
+    ["Open assistant", "సహాయకాన్ని తెరవండి"],
+    ["Sending...", "పంపుతోంది..."],
+    ["Seeding", "విత్తనం"],
+    ["Irrigation", "పారుదల"],
+    ["Fertilizer", "ఎరువు"],
+    ["Weeding", "కలుపు తొలగింపు"],
+    ["Pesticide", "పురుగుమందు"],
+    ["Monitoring", "పర్యవేక్షణ"],
+    ["Harvest", "పంట కోత"],
+    ["Nitrogen", "నైట్రజన్"],
+    ["Phosphorus", "ఫాస్ఫరస్"],
+    ["Potassium", "పొటాషియం"],
+    ["Content", "పదార్థం"],
+    ["Rate", "మోతాదు"],
+    ["Price range", "ధర పరిధి"],
+    ["Cost / acre", "వ్యయం / ఎకరం"],
+    ["Total plan", "మొత్తం ప్రణాళిక"],
+    ["Live mix", "ప్రత్యక్ష మిశ్రమం"],
+    ["Paddy", "వరి"],
+    ["Wheat", "గోధుమ"],
+    ["Barley", "బార్లీ"],
+    ["Corn", "మొక్కజొన్న"],
+    ["Sorghum", "జొన్న"],
+    ["Millet", "సజ్జ"],
+    ["Oats", "ఓట్స్"],
+    ["Vegetables", "కూరగాయలు"],
+    ["Tomato", "టమాటా"],
+    ["Onion", "ఉల్లిపాయ"],
+    ["Potato", "బంగాళదుంప"],
+    ["Brinjal", "వంకాయ"],
+    ["Okra", "బెండకాయ"],
+    ["Chilli", "మిర్చి"],
+    ["Cabbage", "క్యాబేజీ"],
+    ["Cauliflower", "కాలీఫ్లవర్"],
+    ["Carrot", "క్యారెట్"],
+    ["Cucumber", "దోసకాయ"],
+    ["Spinach", "పాలకూర"],
+    ["Beans", "బీన్స్"],
+    ["Peas", "బఠానీలు"],
+    ["Bottle Gourd", "సొరకాయ"],
+    ["Pumpkin", "గుమ్మడికాయ"],
+    ["Cereal", "ధాన్యం"],
+    ["Vegetable", "కూరగాయ"],
+    ["Healthy", "ఆరోగ్యకరమైన"],
+    ["Optimal", "ఉత్తమం"],
+    ["Warning", "హెచ్చరిక"],
+    ["Critical", "క్రిటికల్"]
+  ]
+};
+
+function translateText(value, languageCode) {
+  if (languageCode === "en" || typeof value !== "string" || !value) {
+    return value;
+  }
+
+  const patterns = TRANSLATION_PATTERNS[languageCode] || [];
+  return patterns.reduce((current, [source, target]) => current.split(source).join(target), value);
+}
+
+function translateContent(value, languageCode) {
+  if (Array.isArray(value)) {
+    return value.map((item) => translateContent(item, languageCode));
+  }
+
+  if (value && typeof value === "object") {
+    return Object.fromEntries(
+      Object.entries(value).map(([key, itemValue]) => [key, translateContent(itemValue, languageCode)])
+    );
+  }
+
+  return translateText(value, languageCode);
+}
+
+function getLanguageOptionLabel(language, activeLanguage) {
+  const byCode = {
+    en: {
+      en: "English",
+      hi: "अंग्रेज़ी",
+      te: "ఇంగ్లీష్"
+    },
+    hi: {
+      en: "Hindi",
+      hi: "हिंदी",
+      te: "హిందీ"
+    },
+    te: {
+      en: "Telugu",
+      hi: "तेलुगु",
+      te: "తెలుగు"
+    }
+  };
+
+  return byCode[language?.code]?.[activeLanguage] || language?.label || language?.code || "";
+}
+
 function getInitialPathname() {
   if (typeof window === "undefined") {
     return "/";
@@ -201,6 +625,10 @@ function normalizePathname(pathname) {
 
   if (normalized === "/recommendations") {
     return "/recommendations";
+  }
+
+  if (normalized === "/action-planner") {
+    return "/action-planner";
   }
 
   if (normalized === "/sensor-data") {
@@ -225,34 +653,74 @@ function App() {
   const [chatMessages, setChatMessages] = useState([]);
   const [chatBusy, setChatBusy] = useState(false);
   const [languageBusy, setLanguageBusy] = useState(false);
+  const [plannerSeedingDate, setPlannerSeedingDate] = useState("");
+  const [plannerActionStatus, setPlannerActionStatus] = useState({});
+  const [plannerReminders, setPlannerReminders] = useState([]);
   const profileRef = useRef(null);
 
-  const uiText = site?.uiText || FALLBACK_UI_TEXT;
+  const activeLanguage = site?.selectedLanguage || "en";
+  const translate = (value) => translateText(value, activeLanguage);
+  const uiText = translateContent(site?.uiText || FALLBACK_UI_TEXT, activeLanguage);
   const selectedCrop = getCropProfile(selectedCropKey);
   const cropUi = uiText.recommendationWorkspace.cropSelection;
-  const predictedCrops = dashboard ? buildPredictedCropSuggestions(dashboard) : [];
+  const navItems = NAV_ITEM_CONFIG.map((item) => ({
+    ...item,
+    label: translate(item.label)
+  }));
+  const actionPlannerOptions = ACTION_PLANNER_OPTIONS.map((item) => ({
+    ...item,
+    label: translate(item.label)
+  }));
+  const predictedCrops = dashboard
+    ? buildPredictedCropSuggestions(dashboard).map((item) => ({
+        ...item,
+        label: translate(item.label),
+        family: translate(item.family),
+        marketUnit: translate(item.marketUnit),
+        reason: translate(item.reason)
+      }))
+    : [];
   const predictedCropSections = dashboard
-    ? buildPredictedCropSections(dashboard)
+    ? translateContent(buildPredictedCropSections(dashboard), activeLanguage)
     : { cereals: [], vegetable: null };
-  const weatherSnapshot = dashboard ? buildWeatherSnapshot(dashboard, uiText) : [];
+  const weatherSnapshot = dashboard
+    ? translateContent(buildWeatherSnapshot(dashboard, uiText), activeLanguage)
+    : [];
   const weatherTrend = dashboard
-    ? buildWeatherTrendSeries(dashboard, uiText, weatherRange)
+    ? translateContent(buildWeatherTrendSeries(dashboard, uiText, weatherRange), activeLanguage)
     : null;
   const toolModel = dashboard
-    ? buildToolWorkspaceModel(activeToolKey, site, dashboard, selectedCropKey)
+    ? translateContent(buildToolWorkspaceModel(activeToolKey, site, dashboard, selectedCropKey), activeLanguage)
     : null;
-  const cropSpecificRows = buildCropSpecificTableRows(
-    dashboard?.recommendations?.tableRows || [],
-    selectedCropKey,
-    uiText
+  const cropSpecificRows = translateContent(
+    buildCropSpecificTableRows(dashboard?.recommendations?.tableRows || [], selectedCropKey, uiText),
+    activeLanguage
   );
   const cropRecommendations = dashboard
-    ? buildCropSpecificRecommendations(dashboard, selectedCropKey)
+    ? translateContent(buildCropSpecificRecommendations(dashboard, selectedCropKey), activeLanguage)
     : { summary: "", organic: [], inorganic: [] };
-  const realtimeCardSets = dashboard ? buildRealtimeCardSets(dashboard, uiText) : null;
-  const realtimeTrend = dashboard ? buildNpkTrendSeries(dashboard) : null;
+  const plannerActions = buildPlannerActions(
+    selectedCrop,
+    plannerSeedingDate,
+    cropRecommendations
+  ).map((action) => ({
+    ...action,
+    title: translate(action.title),
+    shortLabel: translate(action.shortLabel),
+    description: translate(action.description)
+  }));
+  const plannerActionStatuses = buildPlannerActionStatuses(
+    plannerActions,
+    plannerActionStatus
+  );
+  const realtimeCardSets = dashboard
+    ? translateContent(buildRealtimeCardSets(dashboard, uiText), activeLanguage)
+    : null;
+  const realtimeTrend = dashboard
+    ? translateContent(buildNpkTrendSeries(dashboard), activeLanguage)
+    : null;
   const environmentSegments = realtimeCardSets
-    ? buildEnvironmentSegments(realtimeCardSets, uiText)
+    ? translateContent(buildEnvironmentSegments(realtimeCardSets, uiText), activeLanguage)
     : [];
 
   useEffect(() => {
@@ -278,19 +746,21 @@ function App() {
 
   useEffect(() => {
     const pageTitle =
-      pathname === "/recommendations"
-        ? "Recommendations"
-        : pathname === "/sensor-data"
-          ? "Sensor Data"
-          : "Overview";
+      pathname === "/action-planner"
+        ? "Action Planner"
+        : pathname === "/recommendations"
+          ? "Recommendations"
+          : pathname === "/sensor-data"
+            ? "Sensor Data"
+            : "Overview";
 
-    document.title = `${site?.brand || "AgriCure"} | ${pageTitle}`;
+    document.title = `${site?.brand || "AgriCure"} | ${translate(pageTitle)}`;
     window.scrollTo({
       top: 0,
       left: 0,
       behavior: "smooth"
     });
-  }, [pathname, site?.brand]);
+  }, [pathname, site?.brand, activeLanguage]);
 
   useEffect(() => {
     if (!chatOpen || chatMessages.length > 0) {
@@ -306,7 +776,92 @@ function App() {
   }, [chatMessages.length, chatOpen, uiText.chat.welcomeMessage]);
 
   useEffect(() => {
-    if (pathname !== "/recommendations" || selectedCropKey || predictedCrops.length === 0) {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    try {
+      const saved = window.localStorage.getItem("plannerActionStatus");
+
+      if (saved) {
+        const parsed = JSON.parse(saved);
+
+        if (parsed && typeof parsed === "object") {
+          setPlannerActionStatus(parsed);
+        }
+      }
+    } catch {
+      // Ignore local storage read issues.
+    }
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    try {
+      window.localStorage.setItem("plannerActionStatus", JSON.stringify(plannerActionStatus));
+    } catch {
+      // Ignore local storage write issues.
+    }
+  }, [plannerActionStatus]);
+
+  useEffect(() => {
+    function refreshPlannerReminders() {
+      setPlannerActionStatus((current) => {
+        const now = Date.now();
+        const todayIso = toIsoDate(new Date());
+        const dueActions = plannerActions.filter((action) => action.date <= todayIso);
+        const nextState = { ...current };
+        const activeReminders = [];
+        let changed = false;
+
+        dueActions.forEach((action) => {
+          const currentStatus = nextState[action.id] || {
+            done: false,
+            lastReminderAt: 0
+          };
+
+          if (currentStatus.done) {
+            return;
+          }
+
+          if (!currentStatus.lastReminderAt || now - currentStatus.lastReminderAt >= 3 * 60 * 60 * 1000) {
+            nextState[action.id] = {
+              ...currentStatus,
+              lastReminderAt: now
+            };
+            changed = true;
+          }
+
+          activeReminders.push({
+            id: action.id,
+            title: action.title,
+            date: action.date,
+            type: action.type
+          });
+        });
+
+        setPlannerReminders(activeReminders);
+        return changed ? nextState : current;
+      });
+    }
+
+    refreshPlannerReminders();
+    const intervalId = window.setInterval(refreshPlannerReminders, 60 * 1000);
+
+    return () => {
+      window.clearInterval(intervalId);
+    };
+  }, [plannerActions]);
+
+  useEffect(() => {
+    if (
+      (pathname !== "/recommendations" && pathname !== "/action-planner") ||
+      selectedCropKey ||
+      predictedCrops.length === 0
+    ) {
       return;
     }
 
@@ -478,6 +1033,16 @@ function App() {
     setActiveToolKey("fertilizer");
   }
 
+  function handlePlannerActionStatusChange(actionId, done) {
+    setPlannerActionStatus((current) => ({
+      ...current,
+      [actionId]: {
+        done,
+        lastReminderAt: done ? Date.now() : current[actionId]?.lastReminderAt || 0
+      }
+    }));
+  }
+
   if (loading) {
     return <LoadingScreen />;
   }
@@ -519,7 +1084,7 @@ function App() {
             </button>
 
             <nav className="hidden items-center gap-2 lg:flex">
-              {NAV_ITEMS.map((item) => (
+              {navItems.map((item) => (
                 <NavLink
                   key={item.path}
                   href={item.path}
@@ -532,7 +1097,7 @@ function App() {
 
             <div className="flex items-center gap-3 sm:gap-4">
               <label className="hidden items-center gap-2 rounded-full border border-slate-200 bg-white/80 px-4 py-2 text-sm text-slate-700 shadow-soft sm:flex">
-                <span className="font-semibold text-slate-500">Language</span>
+                <span className="font-semibold text-slate-500">{translate("Language")}</span>
                 <select
                   value={site.selectedLanguage}
                   onChange={(event) => handleLanguageChange(event.target.value)}
@@ -541,7 +1106,7 @@ function App() {
                 >
                   {site.languages.map((language) => (
                     <option key={language.code} value={language.code}>
-                      {language.label}
+                      {getLanguageOptionLabel(language, activeLanguage)}
                     </option>
                   ))}
                 </select>
@@ -576,17 +1141,20 @@ function App() {
                     <h2 className="mt-3 font-display text-2xl font-bold text-slate-950">
                       {site.profile.farm}
                     </h2>
-                    <p className="mt-2 text-sm text-slate-600">{site.profile.role}</p>
+                    <p className="mt-2 text-sm text-slate-600">{translate(site.profile.role)}</p>
                     <div className="mt-4 grid gap-3 rounded-[1.5rem] bg-slate-50 p-4">
                       <div className="flex items-center justify-between text-sm">
-                        <span className="text-slate-500">Language</span>
+                        <span className="text-slate-500">{translate("Language")}</span>
                         <span className="font-semibold text-slate-900">
-                          {site.languages.find((language) => language.code === site.selectedLanguage)?.label}
+                          {getLanguageOptionLabel(
+                            site.languages.find((language) => language.code === site.selectedLanguage),
+                            activeLanguage
+                          )}
                         </span>
                       </div>
                       <div className="flex items-center justify-between text-sm">
-                        <span className="text-slate-500">Role</span>
-                        <span className="font-semibold text-slate-900">{site.profile.role}</span>
+                        <span className="text-slate-500">{translate("Role")}</span>
+                        <span className="font-semibold text-slate-900">{translate(site.profile.role)}</span>
                       </div>
                     </div>
                     <button
@@ -601,8 +1169,8 @@ function App() {
             </div>
           </div>
 
-          <nav className="mt-3 grid grid-cols-3 gap-2 lg:hidden">
-            {NAV_ITEMS.map((item) => (
+          <nav className="mt-3 grid grid-cols-4 gap-2 lg:hidden">
+            {navItems.map((item) => (
               <NavLink
                 key={item.path}
                 href={item.path}
@@ -616,6 +1184,14 @@ function App() {
         </header>
 
         <main className="mx-auto mt-8 flex w-full max-w-[88rem] flex-col gap-10 px-0 sm:px-1 lg:px-1">
+          {plannerReminders.length ? (
+            <PlannerReminderBanner
+              reminders={plannerReminders}
+              actionStatuses={plannerActionStatuses}
+              translate={translate}
+            />
+          ) : null}
+
           {pathname === "/" ? (
             <OverviewPage
               site={site}
@@ -626,6 +1202,28 @@ function App() {
               weatherSnapshot={weatherSnapshot}
               weatherTrend={weatherTrend}
               onNavigate={navigateTo}
+              translate={translate}
+            />
+          ) : null}
+
+          {pathname === "/action-planner" ? (
+            <ActionPlannerPage
+              cropUi={cropUi}
+              predictedCrops={predictedCrops}
+              selectedCrop={selectedCrop}
+              selectedCropKey={selectedCropKey}
+              actionPlannerOptions={actionPlannerOptions}
+              plannerSeedingDate={plannerSeedingDate}
+              plannerActions={plannerActions}
+              plannerActionStatuses={plannerActionStatuses}
+              onNavigate={navigateTo}
+              translate={translate}
+              onSelectCrop={(cropKey) => {
+                setSelectedCropKey(cropKey);
+                setActiveToolKey("fertilizer");
+              }}
+              onSeedingDateChange={setPlannerSeedingDate}
+              onActionStatusChange={handlePlannerActionStatusChange}
             />
           ) : null}
 
@@ -645,6 +1243,7 @@ function App() {
               cropSpecificRows={cropSpecificRows}
               toolModel={toolModel}
               onNavigate={navigateTo}
+              translate={translate}
               onPrimaryCropChange={handlePrimaryCropChange}
               onVegetableCropChange={(cropKey) => {
                 setSelectedCropKey(cropKey);
@@ -666,6 +1265,7 @@ function App() {
               realtimeTrend={realtimeTrend}
               environmentSegments={environmentSegments}
               onNavigate={navigateTo}
+              translate={translate}
             />
           ) : null}
         </main>
@@ -679,6 +1279,7 @@ function App() {
         messages={chatMessages}
         input={chatInput}
         busy={chatBusy}
+        translate={translate}
         onInputChange={setChatInput}
         onSubmit={handleChatSubmit}
       />
@@ -694,7 +1295,8 @@ function OverviewPage({
   setWeatherRange,
   weatherSnapshot,
   weatherTrend,
-  onNavigate
+  onNavigate,
+  translate
 }) {
   const humidityMetric = dashboard.realtime.metrics[1]?.value || "N/A";
   const feedItems = dashboard.realtime.feed || [];
@@ -702,39 +1304,37 @@ function OverviewPage({
   return (
     <div className="page-transition grid gap-8">
       <PageHero
-        eyebrow="Farm command"
+        eyebrow={translate("Farm command")}
         title={
           <>
-            Startup-ready
+            {translate("Startup-ready")}
             <span className="bg-gradient-to-r from-emerald-600 via-lime-500 to-cyan-500 bg-clip-text text-transparent">
-              {" "}
-              agricultural intelligence
-            </span>{" "}
-            for every field decision.
+              {` ${translate("agricultural intelligence")}`}
+            </span>{` ${translate("for every field decision.")}`}
           </>
         }
-        description={site.subtitle}
+        description={translate(site.subtitle)}
         primaryAction={{
-          label: "Open Recommendations",
+          label: translate("Open Recommendations"),
           onClick: () => onNavigate("/recommendations")
         }}
         secondaryAction={{
-          label: "Open Sensor Data",
+          label: translate("Open Sensor Data"),
           onClick: () => onNavigate("/sensor-data")
         }}
         stats={[
           {
-            label: "Soil health",
+            label: translate("Soil health"),
             value: `${dashboard.overview.soilHealth.score}%`,
-            detail: dashboard.overview.status
+            detail: translate(dashboard.overview.status)
           },
           {
-            label: "Humidity",
+            label: translate("Humidity"),
             value: humidityMetric,
-            detail: "Live atmosphere"
+            detail: translate("Live atmosphere")
           },
           {
-            label: "Last report",
+            label: translate("Last report"),
             value: formatTimeOnly(dashboard.overview.timestamp),
             detail: formatDateTime(dashboard.overview.timestamp)
           }
@@ -742,20 +1342,20 @@ function OverviewPage({
       />
 
       <Reveal delay={180}>
-        <HealthSignalCard dashboard={dashboard} />
+        <HealthSignalCard dashboard={dashboard} translate={translate} />
       </Reveal>
 
       <SurfaceCard
-        eyebrow={dashboard.overview.title}
-        title={dashboard.overview.soilHealth.label}
-        subtitle={dashboard.overview.soilHealth.support}
+        eyebrow={translate(dashboard.overview.title)}
+        title={translate(dashboard.overview.soilHealth.label)}
+        subtitle={translate(dashboard.overview.soilHealth.support)}
         elevated
       >
         <div className="grid gap-4 sm:grid-cols-2">
           {dashboard.overview.soilData.map((item, index) => (
             <Reveal key={item.label} delay={80 + index * 50}>
               <MetricTile
-                label={item.label}
+                label={translate(item.label)}
                 value={`${item.value}${item.unit ? ` ${item.unit}` : ""}`}
                 tone={item.tone}
               />
@@ -766,7 +1366,7 @@ function OverviewPage({
 
       <SurfaceCard
         eyebrow={uiText.overviewWeather.title}
-        title="Climate snapshot"
+        title={translate("Climate snapshot")}
         subtitle={uiText.overviewWeather.subtitle}
       >
         <div className="grid gap-4">
@@ -784,7 +1384,7 @@ function OverviewPage({
 
       <SurfaceCard
         eyebrow={uiText.overviewWeather.chartTitle}
-        title="Weather trend"
+        title={translate("Weather trend")}
         subtitle={uiText.overviewWeather.chartSubtitle}
         right={
           <select
@@ -804,24 +1404,24 @@ function OverviewPage({
       </SurfaceCard>
 
       <SurfaceCard
-        eyebrow="Navigation"
-        title="Open a dedicated page for the next task"
-        subtitle="Recommendations and sensor operations now live on their own focused pages."
+        eyebrow={translate("Navigation")}
+        title={translate("Open a dedicated page for the next task")}
+        subtitle={translate("Recommendations and sensor operations now live on their own focused pages.")}
       >
         <div className="grid gap-4">
           <LaunchCard
-            label="Recommendations"
-            title="Nutrient, crop, and planning decisions"
-            description="Move into a dedicated workspace for crop fit, fertilizer planning, and operational guidance."
-            actionLabel="Go to Recommendations"
+            label={translate("Recommendations")}
+            title={translate("Nutrient, crop, and planning decisions")}
+            description={translate("Move into a dedicated workspace for crop fit, fertilizer planning, and operational guidance.")}
+            actionLabel={translate("Go to Recommendations")}
             onClick={() => onNavigate("/recommendations")}
             tone="emerald"
           />
           <LaunchCard
-            label="Sensor Data"
-            title="Realtime telemetry and environmental monitoring"
-            description="Open the sensor page to inspect NPK drift, environmental distribution, and live feed notes."
-            actionLabel="Go to Sensor Data"
+            label={translate("Sensor Data")}
+            title={translate("Realtime telemetry and environmental monitoring")}
+            description={translate("Open the sensor page to inspect NPK drift, environmental distribution, and live feed notes.")}
+            actionLabel={translate("Go to Sensor Data")}
             onClick={() => onNavigate("/sensor-data")}
             tone="sky"
           />
@@ -829,9 +1429,9 @@ function OverviewPage({
       </SurfaceCard>
 
       <SurfaceCard
-        eyebrow="Field feed"
-        title="Latest observations"
-        subtitle="Short operational notes pulled from the current realtime stream."
+        eyebrow={translate("Field feed")}
+        title={translate("Latest observations")}
+        subtitle={translate("Short operational notes pulled from the current realtime stream.")}
       >
         <div className="grid gap-4 md:grid-cols-3">
           {feedItems.map((item, index) => (
@@ -840,7 +1440,7 @@ function OverviewPage({
                 <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">
                   {item.time}
                 </p>
-                <p className="mt-3 text-sm leading-7 text-slate-700">{item.detail}</p>
+                <p className="mt-3 text-sm leading-7 text-slate-700">{translate(item.detail)}</p>
               </article>
             </Reveal>
           ))}
@@ -865,6 +1465,7 @@ function RecommendationsPage({
   cropSpecificRows,
   toolModel,
   onNavigate,
+  translate,
   onPrimaryCropChange,
   onVegetableCropChange,
   onSelectCrop,
@@ -888,41 +1489,40 @@ function RecommendationsPage({
   return (
     <div className="page-transition grid gap-8">
       <PageHero
-        eyebrow="Recommendation studio"
+        eyebrow={translate("Recommendation studio")}
         title={
           <>
-            Dedicated planning for
+            {translate("Dedicated planning for")}
             <span className="bg-gradient-to-r from-slate-950 via-emerald-600 to-cyan-500 bg-clip-text text-transparent">
-              {" "}
-              crop fit, fertilizer, and next actions
+              {` ${translate("crop fit, fertilizer, and next actions")}`}
             </span>
             .
           </>
         }
         description={uiText.recommendationWorkspace.toolExplorerSubtitle}
         primaryAction={{
-          label: "Open Sensor Data",
+          label: translate("Open Sensor Data"),
           onClick: () => onNavigate("/sensor-data")
         }}
         secondaryAction={{
-          label: "Back to Overview",
+          label: translate("Back to Overview"),
           onClick: () => onNavigate("/")
         }}
         stats={[
           {
-            label: "Selected crop",
-            value: selectedCrop?.label || predictedCrops[0]?.label || "Pending",
+            label: translate("Selected crop"),
+            value: translate(selectedCrop?.label || predictedCrops[0]?.label || "Pending"),
             detail: cropUi.summaryPrefix
           },
           {
-            label: "Top organic",
-            value: topOrganic?.fertilizer || "No recommendation",
-            detail: topOrganic?.priority || "Review data"
+            label: translate("Top organic"),
+            value: translate(topOrganic?.fertilizer || "No recommendation"),
+            detail: translate(topOrganic?.priority || "Review data")
           },
           {
-            label: "Top inorganic",
-            value: topInorganic?.fertilizer || "No recommendation",
-            detail: topInorganic?.priority || "Review data"
+            label: translate("Top inorganic"),
+            value: translate(topInorganic?.fertilizer || "No recommendation"),
+            detail: translate(topInorganic?.priority || "Review data")
           }
         ]}
       />
@@ -936,7 +1536,7 @@ function RecommendationsPage({
           <div className="grid gap-5">
             <div className="grid gap-4 sm:grid-cols-2">
               <label className="grid gap-2 text-sm">
-                <span className="font-semibold text-slate-600">Primary crop</span>
+                <span className="font-semibold text-slate-600">{translate("Primary crop")}</span>
                 <select
                   value={activePrimaryValue}
                   onChange={(event) => onPrimaryCropChange(event.target.value)}
@@ -945,7 +1545,9 @@ function RecommendationsPage({
                   <option value="">{cropUi.primaryPlaceholder}</option>
                   {PRIMARY_CROP_OPTIONS.map((item) => (
                     <option key={item.key} value={item.key}>
-                      {item.key === "vegetables" ? cropUi.vegetableOption : item.label}
+                      {item.key === "vegetables"
+                        ? cropUi.vegetableOption
+                        : translate(item.label)}
                     </option>
                   ))}
                 </select>
@@ -953,7 +1555,7 @@ function RecommendationsPage({
 
               {activePrimaryValue === "vegetables" ? (
                 <label className="grid gap-2 text-sm">
-                  <span className="font-semibold text-slate-600">Vegetable crop</span>
+                  <span className="font-semibold text-slate-600">{translate("Vegetable crop")}</span>
                   <select
                     value={selectedCropKey}
                     onChange={(event) => onVegetableCropChange(event.target.value)}
@@ -962,7 +1564,7 @@ function RecommendationsPage({
                     <option value="">{cropUi.vegetablePlaceholder}</option>
                     {VEGETABLE_CROP_OPTIONS.map((item) => (
                       <option key={item.key} value={item.key}>
-                        {item.label}
+                        {translate(item.label)}
                       </option>
                     ))}
                   </select>
@@ -973,7 +1575,7 @@ function RecommendationsPage({
             <div className="grid gap-5">
               <div className="grid gap-3">
                 <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">
-                  Predicted cereals
+                  {translate("Predicted cereals")}
                 </p>
                 <div className="grid gap-3 md:grid-cols-2">
                   {cerealPredictions.map((crop, index) => (
@@ -982,6 +1584,7 @@ function RecommendationsPage({
                         crop={crop}
                         selectedCropKey={selectedCropKey}
                         predictedTag={cropUi.predictedTag}
+                        translate={translate}
                         onSelectCrop={onSelectCrop}
                       />
                     </Reveal>
@@ -992,13 +1595,14 @@ function RecommendationsPage({
               {vegetablePrediction ? (
                 <div className="grid gap-3">
                   <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">
-                    Vegetable prediction
+                    {translate("Vegetable prediction")}
                   </p>
                   <Reveal delay={220}>
                     <CropPredictionCard
                       crop={vegetablePrediction}
                       selectedCropKey={selectedCropKey}
                       predictedTag={cropUi.predictedTag}
+                      translate={translate}
                       onSelectCrop={onSelectCrop}
                     />
                   </Reveal>
@@ -1010,10 +1614,12 @@ function RecommendationsPage({
 
         <SurfaceCard
           eyebrow={cropUi.selectedTitle}
-          title={selectedCrop ? selectedCrop.label : "Select a crop to unlock the workspace"}
+          title={
+            selectedCrop ? translate(selectedCrop.label) : translate("Select a crop to unlock the workspace")
+          }
           subtitle={
             selectedCrop
-              ? `${cropUi.summaryPrefix}: ${selectedCrop.label}. ${cropRecommendations.summary}`
+              ? `${cropUi.summaryPrefix}: ${translate(selectedCrop.label)}. ${cropRecommendations.summary}`
               : cropUi.lockedMessage
           }
         >
@@ -1025,11 +1631,11 @@ function RecommendationsPage({
                 </p>
                 <div className="mt-3 flex flex-wrap items-end justify-between gap-4">
                   <div>
-                    <h3 className="font-display text-3xl font-black">{selectedCrop.label}</h3>
-                    <p className="mt-2 text-sm text-white/75">{selectedCrop.family}</p>
+                    <h3 className="font-display text-3xl font-black">{translate(selectedCrop.label)}</h3>
+                    <p className="mt-2 text-sm text-white/75">{translate(selectedCrop.family)}</p>
                   </div>
                   <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-white/70">
-                    {cropUi.unlockedMessagePrefix} {selectedCrop.label}
+                    {cropUi.unlockedMessagePrefix} {translate(selectedCrop.label)}
                   </span>
                 </div>
                 <div className="mt-6 grid gap-4 sm:grid-cols-2">
@@ -1040,7 +1646,7 @@ function RecommendationsPage({
                   />
                   <StatTile
                     label={cropUi.marketPriceLabel}
-                    value={`${formatCurrency(selectedCrop.marketPrice)} ${selectedCrop.marketUnit}`}
+                    value={`${formatCurrency(selectedCrop.marketPrice)} ${translate(selectedCrop.marketUnit)}`}
                     dark
                   />
                 </div>
@@ -1049,7 +1655,7 @@ function RecommendationsPage({
               <div className="grid gap-3">
                 <div className="rounded-[1.6rem] border border-emerald-200 bg-gradient-to-r from-emerald-50 via-white to-cyan-50 p-4">
                   <p className="text-xs font-semibold uppercase tracking-[0.24em] text-emerald-700">
-                    Active recommendation
+                    {translate("Active recommendation")}
                   </p>
                   <p className="mt-2 text-sm font-semibold text-slate-950">
                     {
@@ -1081,7 +1687,7 @@ function RecommendationsPage({
             <div className="rounded-[1.8rem] border border-dashed border-slate-300 bg-slate-50 p-8 text-center">
               <p className="font-display text-2xl font-bold text-slate-950">{cropUi.lockedMessage}</p>
               <p className="mt-3 text-sm leading-7 text-slate-600">
-                Use the field-fit crop shortlist to open the recommendation workspace instantly.
+                {translate("Use the field-fit crop shortlist to open the recommendation workspace instantly.")}
               </p>
               {predictedCrops[0] ? (
                 <button
@@ -1089,7 +1695,7 @@ function RecommendationsPage({
                   onClick={() => onSelectCrop(predictedCrops[0].key)}
                   className="mt-5 rounded-full bg-slate-950 px-5 py-3 text-sm font-semibold text-white"
                 >
-                  Use best-fit crop
+                  {translate("Use best-fit crop")}
                 </button>
               ) : null}
             </div>
@@ -1102,7 +1708,7 @@ function RecommendationsPage({
           <div className="grid gap-6">
             <SurfaceCard
               eyebrow={toolModel.badge}
-              title="Current sensor values"
+              title={translate("Current sensor values")}
               subtitle={toolModel.subtitle}
               elevated
             >
@@ -1168,9 +1774,9 @@ function RecommendationsPage({
             </SurfaceCard>
 
             <SurfaceCard
-              eyebrow="Nutrient correction"
+              eyebrow={translate("Nutrient correction")}
               title={uiText.recommendationColumnTitles.inorganic}
-              subtitle="Primary chemical correction options for the selected crop."
+              subtitle={translate("Primary chemical correction options for the selected crop.")}
             >
               <RecommendationColumn
                 title={uiText.recommendationColumnTitles.inorganic}
@@ -1178,13 +1784,14 @@ function RecommendationsPage({
                 boxed={false}
                 showPricing={false}
                 showCostStats={false}
+                translate={translate}
               />
             </SurfaceCard>
 
             <SurfaceCard
-              eyebrow="Soil support"
+              eyebrow={translate("Soil support")}
               title={uiText.recommendationColumnTitles.organic}
-              subtitle="Organic fertilizer options that support nutrient recovery and soil structure."
+              subtitle={translate("Organic fertilizer options that support nutrient recovery and soil structure.")}
             >
               <RecommendationColumn
                 title={uiText.recommendationColumnTitles.organic}
@@ -1192,6 +1799,7 @@ function RecommendationsPage({
                 boxed={false}
                 showPricing={false}
                 showCostStats={false}
+                translate={translate}
               />
             </SurfaceCard>
 
@@ -1207,10 +1815,12 @@ function RecommendationsPage({
                 <RecommendationCostGroup
                   title={uiText.recommendationColumnTitles.inorganic}
                   items={cropRecommendations.inorganic}
+                  translate={translate}
                 />
                 <RecommendationCostGroup
                   title={uiText.recommendationColumnTitles.organic}
                   items={cropRecommendations.organic}
+                  translate={translate}
                 />
               </div>
             </SurfaceCard>
@@ -1271,8 +1881,8 @@ function RecommendationsPage({
                       </h3>
                       <p className="mt-3 text-sm leading-7 text-slate-600">{item.description}</p>
                       <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                        <MiniStat label="Inorganic" value={item.inorganicRate} />
-                        <MiniStat label="Organic" value={item.organicRate} />
+                        <MiniStat label={translate("Inorganic")} value={item.inorganicRate} />
+                        <MiniStat label={translate("Organic")} value={item.organicRate} />
                       </div>
                     </article>
                   </Reveal>
@@ -1288,7 +1898,9 @@ function RecommendationsPage({
             elevated
           >
             <div className="grid gap-6">
-              {toolModel.gallery?.length ? <PestGalleryPanel items={toolModel.gallery} /> : null}
+              {toolModel.gallery?.length ? (
+                <PestGalleryPanel items={toolModel.gallery} translate={translate} />
+              ) : null}
 
               <div className="grid gap-4">
                 {toolModel.cards.map((card, index) => (
@@ -1334,7 +1946,7 @@ function RecommendationsPage({
 
                 <article className="rounded-[1.9rem] bg-slate-950 p-5 text-white">
                   <p className="text-xs font-semibold uppercase tracking-[0.24em] text-white/60">
-                    Planner note
+                    {translate("Planner note")}
                   </p>
                   <p className="mt-3 text-sm leading-7 text-white/80">{toolModel.note}</p>
                 </article>
@@ -1347,13 +1959,220 @@ function RecommendationsPage({
   );
 }
 
+function ActionPlannerPage({
+  cropUi,
+  predictedCrops,
+  selectedCrop,
+  selectedCropKey,
+  actionPlannerOptions,
+  plannerSeedingDate,
+  plannerActions,
+  plannerActionStatuses,
+  onNavigate,
+  translate,
+  onSelectCrop,
+  onSeedingDateChange,
+  onActionStatusChange
+}) {
+  const calendarDate = plannerSeedingDate || new Date().toISOString().slice(0, 10);
+  const [visibleMonth, setVisibleMonth] = useState(startOfMonthIso(calendarDate));
+  const [selectedDate, setSelectedDate] = useState("");
+  const [activePlannerFilter, setActivePlannerFilter] = useState("All");
+
+  useEffect(() => {
+    setVisibleMonth(startOfMonthIso(calendarDate));
+  }, [calendarDate]);
+
+  const filteredPlannerActions =
+    activePlannerFilter === "All"
+      ? plannerActions
+      : plannerActions.filter((action) => action.type === activePlannerFilter);
+  const selectedDateActions = filteredPlannerActions.filter((action) => action.date === selectedDate);
+
+  return (
+    <div className="page-transition grid gap-8">
+      <PageHero
+        eyebrow={translate("Action planner")}
+        title={
+          <>
+            {translate("Turn a")}
+            <span className="bg-gradient-to-r from-emerald-600 via-lime-500 to-cyan-500 bg-clip-text text-transparent">
+              {` ${translate("crop and seeding date")}`}
+            </span>{` ${translate("into a field action calendar.")}`}
+          </>
+        }
+        description={translate("Select the crop, enter the seeding date, and get a dated action plan with fertilizer, protection, and weeding events marked on the calendar.")}
+        primaryAction={{
+          label: translate("Open Recommendations"),
+          onClick: () => onNavigate("/recommendations")
+        }}
+        secondaryAction={{
+          label: translate("Back to Overview"),
+          onClick: () => onNavigate("/")
+        }}
+        stats={[
+          {
+            label: translate("Planner crop"),
+            value: translate(selectedCrop?.label || "Choose crop"),
+            detail: translate("Planning context")
+          },
+          {
+            label: translate("Seeding date"),
+            value: plannerSeedingDate ? formatDateLong(plannerSeedingDate) : translate("Pending"),
+            detail: translate("Start of schedule")
+          },
+          {
+            label: translate("Planned actions"),
+            value: String(plannerActions.length),
+            detail: translate("Calendar markers")
+          }
+        ]}
+      />
+
+      <section className="grid gap-6 xl:grid-cols-[1fr_1.05fr]">
+        <SurfaceCard
+          eyebrow={translate("Calendar")}
+          title={translate("Action calendar")}
+          subtitle={translate("The generated field actions are marked directly on the calendar.")}
+          elevated
+        >
+          <PlannerCalendar
+            anchorDate={visibleMonth}
+            actions={filteredPlannerActions}
+            actionStatuses={plannerActionStatuses}
+            activeFilter={activePlannerFilter}
+            onFilterChange={setActivePlannerFilter}
+            onPreviousMonth={() => setVisibleMonth((current) => shiftMonthIso(current, -1))}
+            onNextMonth={() => setVisibleMonth((current) => shiftMonthIso(current, 1))}
+            onSelectDate={setSelectedDate}
+            translate={translate}
+          />
+        </SurfaceCard>
+
+        <SurfaceCard
+          eyebrow={translate("Questions")}
+          title={translate("Plan the crop schedule")}
+          subtitle={translate("Answer the crop and seeding date questions to generate the farm action timeline.")}
+          elevated
+        >
+          <div className="grid gap-6">
+            <div className="grid gap-3">
+              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">
+                {translate("Question 1")}
+              </p>
+              <label className="grid gap-2 text-sm">
+                <span className="font-semibold text-slate-700">{translate("Enter the crop")}</span>
+                <select
+                  value={selectedCropKey}
+                  onChange={(event) => onSelectCrop(event.target.value)}
+                  className="rounded-[1.3rem] border border-slate-200 bg-white px-4 py-3 font-semibold text-slate-900 outline-none"
+                >
+                  <option value="">{cropUi.primaryPlaceholder}</option>
+                  {actionPlannerOptions.map((item) => (
+                    <option key={item.key} value={item.key}>
+                      {item.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <div className="grid gap-3">
+                <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">
+                  {translate("Suggested crops")}
+                </p>
+                <div className="grid gap-3 md:grid-cols-2">
+                  {predictedCrops.slice(0, 4).map((crop, index) => (
+                    <Reveal key={crop.key} delay={70 + index * 50}>
+                      <CropPredictionCard
+                        crop={crop}
+                        selectedCropKey={selectedCropKey}
+                        predictedTag={cropUi.predictedTag}
+                        translate={translate}
+                        onSelectCrop={onSelectCrop}
+                      />
+                    </Reveal>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {selectedCrop ? (
+              <div className="grid gap-3">
+                <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">
+                  {translate("Question 2")}
+                </p>
+                <label className="grid gap-2 text-sm">
+                  <span className="font-semibold text-slate-700">{translate("Enter the seeding date")}</span>
+                  <input
+                    type="date"
+                    value={plannerSeedingDate}
+                    onChange={(event) => onSeedingDateChange(event.target.value)}
+                    className="rounded-[1.3rem] border border-slate-200 bg-white px-4 py-3 font-semibold text-slate-900 outline-none"
+                  />
+                </label>
+              </div>
+            ) : null}
+
+            {selectedCrop && plannerSeedingDate ? (
+              <div className="grid gap-4">
+                <div className="rounded-[1.6rem] border border-emerald-200 bg-gradient-to-r from-emerald-50 via-white to-cyan-50 p-4">
+                  <p className="text-xs font-semibold uppercase tracking-[0.24em] text-emerald-700">
+                    {translate("Generated plan")}
+                  </p>
+                  <p className="mt-2 text-sm text-slate-700">
+                    {translate(selectedCrop.label)} {translate("seeded on")} {formatDateLong(plannerSeedingDate)}.{" "}
+                    {translate("Follow the dated actions below.")}
+                  </p>
+                </div>
+
+                {plannerActions.map((action, index) => (
+                  <Reveal key={`${action.date}-${action.title}`} delay={90 + index * 55}>
+                    <article className="rounded-[1.7rem] border border-slate-200 bg-white p-5">
+                      <div className="flex flex-wrap items-start justify-between gap-3">
+                        <div>
+                          <p className={`text-xs font-semibold uppercase tracking-[0.24em] ${plannerEventText(action.type)}`}>
+                            {translate(action.type)}
+                          </p>
+                          <h3 className="mt-2 font-display text-2xl font-bold text-slate-950">
+                            {action.title}
+                          </h3>
+                        </div>
+                        <span className={`status-pill status-pill--${plannerEventTone(action.type)}`}>
+                          {formatDateLong(action.date)}
+                        </span>
+                      </div>
+                      <p className="mt-3 text-sm leading-7 text-slate-600">{action.description}</p>
+                    </article>
+                  </Reveal>
+                ))}
+              </div>
+            ) : null}
+          </div>
+        </SurfaceCard>
+      </section>
+
+      {selectedDate && selectedDateActions.length ? (
+        <PlannerActionPopup
+          date={selectedDate}
+          actions={selectedDateActions}
+          actionStatuses={plannerActionStatuses}
+          onClose={() => setSelectedDate("")}
+          onActionStatusChange={onActionStatusChange}
+          translate={translate}
+        />
+      ) : null}
+    </div>
+  );
+}
+
 function SensorDataPage({
   dashboard,
   uiText,
   realtimeCardSets,
   realtimeTrend,
   environmentSegments,
-  onNavigate
+  onNavigate,
+  translate
 }) {
   const humidityMetric = dashboard.realtime.metrics[1]?.value || "N/A";
   const temperatureMetric = dashboard.realtime.metrics[2]?.value || "N/A";
@@ -1361,41 +2180,40 @@ function SensorDataPage({
   return (
     <div className="page-transition grid gap-8">
       <PageHero
-        eyebrow="Sensor operations"
+        eyebrow={translate("Sensor operations")}
         title={
           <>
-            A focused telemetry page for
+            {translate("A focused telemetry page for")}
             <span className="bg-gradient-to-r from-cyan-500 via-sky-500 to-emerald-500 bg-clip-text text-transparent">
-              {" "}
-              live field monitoring
+              {` ${translate("live field monitoring")}`}
             </span>
             .
           </>
         }
         description={uiText.realtimePanel.environmentSubtitle}
         primaryAction={{
-          label: "Open Recommendations",
+          label: translate("Open Recommendations"),
           onClick: () => onNavigate("/recommendations")
         }}
         secondaryAction={{
-          label: "Back to Overview",
+          label: translate("Back to Overview"),
           onClick: () => onNavigate("/")
         }}
         stats={[
           {
-            label: "Last sync",
+            label: translate("Last sync"),
             value: formatTimeOnly(dashboard.realtime.updatedAt),
             detail: uiText.realtimePanel.lastUpdatedLabel
           },
           {
-            label: "Humidity",
+            label: translate("Humidity"),
             value: humidityMetric,
-            detail: "Environment node"
+            detail: translate("Environment node")
           },
           {
-            label: "Root zone",
+            label: translate("Root zone"),
             value: temperatureMetric,
-            detail: "Live root temperature"
+            detail: translate("Live root temperature")
           }
         ]}
       />
@@ -1421,7 +2239,7 @@ function SensorDataPage({
 
       <SurfaceCard
         eyebrow={uiText.realtimePanel.environmentTitle}
-        title="Environment readings"
+        title={translate("Environment readings")}
         subtitle={uiText.realtimePanel.environmentSubtitle}
       >
         <div className="grid gap-4">
@@ -1438,7 +2256,7 @@ function SensorDataPage({
 
       <SurfaceCard
         eyebrow={uiText.realtimePanel.trendTitle}
-        title="NPK movement"
+        title={translate("NPK movement")}
         subtitle={uiText.realtimePanel.trendSubtitle}
       >
         {realtimeTrend ? <LineChart chart={realtimeTrend} /> : null}
@@ -1446,16 +2264,16 @@ function SensorDataPage({
 
       <SurfaceCard
         eyebrow={uiText.realtimePanel.distributionTitle}
-        title="Environmental balance"
+        title={translate("Environmental balance")}
         subtitle={uiText.realtimePanel.distributionSubtitle}
       >
-        <DonutChart segments={environmentSegments} />
+        <DonutChart segments={environmentSegments} translate={translate} />
       </SurfaceCard>
 
       <SurfaceCard
-        eyebrow="Realtime feed"
-        title="Operational notes"
-        subtitle="A dedicated page for the sensor stream and the latest field signals."
+        eyebrow={translate("Realtime feed")}
+        title={translate("Operational notes")}
+        subtitle={translate("A dedicated page for the sensor stream and the latest field signals.")}
       >
         <div className="grid gap-4 md:grid-cols-3">
           {dashboard.realtime.feed.map((item, index) => (
@@ -1464,7 +2282,7 @@ function SensorDataPage({
                 <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">
                   {item.time}
                 </p>
-                <p className="mt-3 text-sm leading-7 text-slate-700">{item.detail}</p>
+                <p className="mt-3 text-sm leading-7 text-slate-700">{translate(item.detail)}</p>
               </article>
             </Reveal>
           ))}
@@ -1475,6 +2293,9 @@ function SensorDataPage({
 }
 
 function LoadingScreen() {
+  const translate = (value) =>
+    translateText(value, typeof document === "undefined" ? "en" : document.documentElement.lang || "en");
+
   return (
     <div className="flex min-h-screen items-center justify-center bg-soil-sand px-6">
       <div className="glass-panel w-full max-w-xl p-10 text-center">
@@ -1482,10 +2303,10 @@ function LoadingScreen() {
           AgriCure
         </p>
         <h1 className="mt-4 font-display text-4xl font-black text-slate-950">
-          Booting the field workspace
+          {translate("Booting the field workspace")}
         </h1>
         <p className="mt-4 text-sm leading-7 text-slate-600">
-          Loading soil context, recommendations, and live telemetry.
+          {translate("Loading soil context, recommendations, and live telemetry.")}
         </p>
         <div className="mx-auto mt-6 h-3 w-full max-w-sm overflow-hidden rounded-full bg-slate-200">
           <div className="loading-bar h-full rounded-full bg-gradient-to-r from-emerald-500 via-lime-400 to-cyan-300" />
@@ -1496,6 +2317,9 @@ function LoadingScreen() {
 }
 
 function ErrorScreen({ error, onRetry }) {
+  const translate = (value) =>
+    translateText(value, typeof document === "undefined" ? "en" : document.documentElement.lang || "en");
+
   return (
     <div className="flex min-h-screen items-center justify-center bg-soil-sand px-6">
       <div className="glass-panel w-full max-w-xl p-10 text-center">
@@ -1503,17 +2327,17 @@ function ErrorScreen({ error, onRetry }) {
           AgriCure
         </p>
         <h1 className="mt-4 font-display text-4xl font-black text-slate-950">
-          Unable to load the dashboard
+          {translate("Unable to load the dashboard")}
         </h1>
         <p className="mt-4 text-sm leading-7 text-slate-600">
-          {error || "Please make sure the backend server is running and try again."}
+          {translate(error || "Please make sure the backend server is running and try again.")}
         </p>
         <button
           type="button"
           onClick={onRetry}
           className="mt-6 rounded-full bg-slate-950 px-5 py-3 text-sm font-semibold text-white"
         >
-          Retry
+          {translate("Retry")}
         </button>
       </div>
     </div>
@@ -1633,23 +2457,23 @@ function SurfaceCard({ eyebrow, title, subtitle, right, children, elevated = fal
   );
 }
 
-function HealthSignalCard({ dashboard }) {
+function HealthSignalCard({ dashboard, translate = (value) => value }) {
   return (
     <article className="hover-lift overflow-hidden rounded-[2rem] bg-gradient-to-br from-slate-950 via-slate-900 to-emerald-900 p-6 text-white shadow-ambient">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.28em] text-white/55">
-            Soil status
+            {translate("Soil status")}
           </p>
           <h3 className="mt-3 font-display text-4xl font-black">
             {dashboard.overview.soilHealth.score}%
           </h3>
           <p className="mt-3 max-w-md text-sm leading-7 text-white/78">
-            {dashboard.overview.soilHealth.message}
+            {translate(dashboard.overview.soilHealth.message)}
           </p>
         </div>
         <span className={`status-pill status-pill--${severityTone(dashboard.overview.status)}`}>
-          {dashboard.overview.status}
+          {translate(dashboard.overview.status)}
         </span>
       </div>
       <div className="mt-6 space-y-3">
@@ -1660,7 +2484,7 @@ function HealthSignalCard({ dashboard }) {
           />
         </div>
         <div className="flex items-center justify-between gap-4 text-sm text-white/74">
-          <span>{dashboard.overview.soilHealth.support}</span>
+          <span>{translate(dashboard.overview.soilHealth.support)}</span>
           <span>{formatDateTime(dashboard.overview.timestamp)}</span>
         </div>
       </div>
@@ -1719,7 +2543,7 @@ function LaunchCard({ label, title, description, actionLabel, onClick, tone }) {
   );
 }
 
-function CropPredictionCard({ crop, selectedCropKey, predictedTag, onSelectCrop }) {
+function CropPredictionCard({ crop, selectedCropKey, predictedTag, onSelectCrop, translate = (value) => value }) {
   const isSelected = selectedCropKey === crop.key;
 
   return (
@@ -1739,9 +2563,9 @@ function CropPredictionCard({ crop, selectedCropKey, predictedTag, onSelectCrop 
               isSelected ? "text-white/60" : "text-slate-500"
             }`}
           >
-            {predictedTag} • {crop.family}
+            {predictedTag} • {translate(crop.family)}
           </p>
-          <h3 className="mt-2 font-display text-2xl font-bold">{crop.label}</h3>
+          <h3 className="mt-2 font-display text-2xl font-bold">{translate(crop.label)}</h3>
         </div>
         <span
           className={`rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] ${
@@ -1752,28 +2576,28 @@ function CropPredictionCard({ crop, selectedCropKey, predictedTag, onSelectCrop 
         </span>
       </div>
       <p className={`mt-3 text-sm leading-7 ${isSelected ? "text-white/78" : "text-slate-600"}`}>
-        {crop.reason}
+        {translate(crop.reason)}
       </p>
     </button>
   );
 }
 
-function PestGalleryPanel({ items }) {
+function PestGalleryPanel({ items, translate = (value) => value }) {
   return (
     <article className="rounded-[1.9rem] border border-slate-200 bg-white p-5">
       <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">
-        Pest gallery
+        {translate("Pest gallery")}
       </p>
       <h3 className="mt-3 font-display text-2xl font-bold text-slate-950">
-        Common pests and disease references
+        {translate("Common pests and disease references")}
       </h3>
       <p className="mt-3 text-sm leading-7 text-slate-600">
-        Web-loaded visual references for different pests or diseases linked to the selected crop.
+        {translate("Web-loaded visual references for different pests or diseases linked to the selected crop.")}
       </p>
       <div className="mt-5 grid gap-4 md:grid-cols-3">
         {items.map((item, index) => (
           <Reveal key={`${item.name}-${item.query}`} delay={60 + index * 50}>
-            <PestPhotoCard item={item} />
+            <PestPhotoCard item={item} translate={translate} />
           </Reveal>
         ))}
       </div>
@@ -1781,7 +2605,7 @@ function PestGalleryPanel({ items }) {
   );
 }
 
-function PestPhotoCard({ item }) {
+function PestPhotoCard({ item, translate = (value) => value }) {
   const [photoState, setPhotoState] = useState({
     loading: true,
     imageUrl: "",
@@ -1867,25 +2691,25 @@ function PestPhotoCard({ item }) {
           />
         ) : photoState.loading ? (
           <div className="flex h-full items-center justify-center bg-gradient-to-br from-slate-100 via-emerald-50 to-cyan-50 px-4 text-center">
-            <p className="text-sm font-semibold text-slate-500">Loading pest photo...</p>
+            <p className="text-sm font-semibold text-slate-500">{translate("Loading pest photo...")}</p>
           </div>
         ) : (
           <div className="flex h-full items-center justify-center bg-gradient-to-br from-slate-100 via-emerald-50 to-cyan-50 px-4 text-center">
-            <p className="text-sm font-semibold text-slate-500">Photo unavailable right now.</p>
+            <p className="text-sm font-semibold text-slate-500">{translate("Photo unavailable right now.")}</p>
           </div>
         )}
 
         <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-slate-950/90 via-slate-950/45 to-transparent p-4">
           <p className="text-sm font-semibold uppercase tracking-[0.2em] text-white/70">
-            Pest
+            {translate("Pest")}
           </p>
-          <h4 className="mt-2 font-display text-2xl font-bold text-white">{item.name}</h4>
+          <h4 className="mt-2 font-display text-2xl font-bold text-white">{translate(item.name)}</h4>
         </div>
       </div>
 
       <div className="p-4">
         <p className="text-sm leading-7 text-slate-600">
-          Search topic: <span className="font-semibold text-slate-900">{item.query}</span>
+          {translate("Search topic:")} <span className="font-semibold text-slate-900">{translate(item.query)}</span>
         </p>
         {photoState.pageUrl ? (
           <a
@@ -1894,11 +2718,280 @@ function PestPhotoCard({ item }) {
             rel="noreferrer"
             className="mt-4 inline-flex rounded-full bg-slate-950 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800"
           >
-            Source: Wikipedia
+            {translate("Source: Wikipedia")}
           </a>
         ) : null}
       </div>
     </article>
+  );
+}
+
+function PlannerActionPopup({
+  date,
+  actions,
+  actionStatuses,
+  onClose,
+  onActionStatusChange,
+  translate = (value) => value
+}) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/35 px-4">
+      <div className="glass-panel w-full max-w-2xl p-6">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">
+              {translate("Assigned actions")}
+            </p>
+            <h3 className="mt-2 font-display text-3xl font-bold text-slate-950">
+              {formatDateLong(date)}
+            </h3>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700"
+          >
+            {translate("Close")}
+          </button>
+        </div>
+
+        <div className="mt-6 grid gap-4">
+          {actions.map((action) => {
+            const done = Boolean(actionStatuses[action.id]?.done);
+
+            return (
+              <article key={action.id} className="rounded-[1.7rem] border border-slate-200 bg-white p-5">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <p className={`text-xs font-semibold uppercase tracking-[0.24em] ${plannerEventText(action.type)}`}>
+                      {translate(action.type)}
+                    </p>
+                    <h4 className="mt-2 font-display text-2xl font-bold text-slate-950">
+                      {action.title}
+                    </h4>
+                  </div>
+                  <span className={`status-pill status-pill--${done ? "slate" : plannerEventTone(action.type)}`}>
+                    {done ? translate("Done") : translate("Not done")}
+                  </span>
+                </div>
+                <p className="mt-3 text-sm leading-7 text-slate-600">{action.description}</p>
+
+                <div className="mt-4 flex flex-wrap gap-3">
+                  <button
+                    type="button"
+                    onClick={() => onActionStatusChange(action.id, true)}
+                    className={`rounded-full px-4 py-2 text-sm font-semibold ${
+                      done ? "bg-emerald-600 text-white" : "bg-emerald-100 text-emerald-700"
+                    }`}
+                  >
+                    {translate("Done")}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onActionStatusChange(action.id, false)}
+                    className={`rounded-full px-4 py-2 text-sm font-semibold ${
+                      !done ? "bg-rose-600 text-white" : "bg-rose-100 text-rose-700"
+                    }`}
+                  >
+                    {translate("Not done")}
+                  </button>
+                </div>
+              </article>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function PlannerReminderBanner({ reminders, actionStatuses, translate = (value) => value }) {
+  const pendingReminders = reminders.filter((item) => !actionStatuses[item.id]?.done);
+
+  if (pendingReminders.length === 0) {
+    return null;
+  }
+
+  return (
+    <section className="glass-panel border border-amber-200 bg-amber-50/90 p-5">
+      <p className="text-xs font-semibold uppercase tracking-[0.24em] text-amber-700">
+        {translate("Reminder")}
+      </p>
+      <div className="mt-3 grid gap-3">
+        {pendingReminders.map((item) => (
+          <div key={item.id} className="rounded-[1.2rem] bg-white px-4 py-3 text-sm text-slate-700">
+            <span className="font-semibold text-slate-950">{item.title}</span> {translate("is still not done.")}{" "}
+            {translate("Reminder active every 3 hours from")} {formatDateLong(item.date)}{" "}
+            {translate("until you mark it done.")}
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function PlannerCalendar({
+  anchorDate,
+  actions,
+  actionStatuses,
+  activeFilter,
+  onFilterChange,
+  onPreviousMonth,
+  onNextMonth,
+  onSelectDate,
+  translate = (value) => value
+}) {
+  const baseDate = parseIsoDate(anchorDate);
+  const monthStart = new Date(baseDate.getFullYear(), baseDate.getMonth(), 1);
+  const gridStart = new Date(monthStart);
+  gridStart.setDate(monthStart.getDate() - monthStart.getDay());
+  const actionsByDate = new Map();
+
+  actions.forEach((action) => {
+    const existing = actionsByDate.get(action.date) || [];
+    actionsByDate.set(action.date, [...existing, action]);
+  });
+  const days = [];
+
+  for (let index = 0; index < 42; index += 1) {
+    const currentDate = new Date(gridStart);
+    currentDate.setDate(gridStart.getDate() + index);
+    const isoDate = toIsoDate(currentDate);
+    const isCurrentMonth = currentDate.getMonth() === monthStart.getMonth();
+
+    days.push({
+      isoDate,
+      label: currentDate.getDate(),
+      isCurrentMonth,
+      actions: actionsByDate.get(isoDate) || []
+    });
+  }
+
+  return (
+    <div className="grid gap-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={onPreviousMonth}
+            className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700"
+          >
+            {translate("Prev")}
+          </button>
+          <h3 className="font-display text-3xl font-bold text-slate-950">
+            {monthStart.toLocaleDateString(getSpeechLocale(document.documentElement.lang || "en"), {
+              month: "long",
+              year: "numeric"
+            })}
+          </h3>
+          <button
+            type="button"
+            onClick={onNextMonth}
+            className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700"
+          >
+            {translate("Next")}
+          </button>
+        </div>
+      </div>
+
+      <div className="flex flex-wrap gap-2">
+        <button
+          type="button"
+          onClick={() => onFilterChange("All")}
+          className={`rounded-full px-4 py-2 text-sm font-semibold uppercase tracking-[0.18em] transition ${
+            activeFilter === "All"
+              ? "bg-slate-950 text-white"
+              : "bg-slate-100 text-slate-700 hover:bg-white"
+          }`}
+        >
+          {translate("All")}
+        </button>
+        {PLANNER_EVENT_TYPES.map((item) => (
+          <button
+            key={item.type}
+            type="button"
+            onClick={() => onFilterChange(item.type)}
+            className={`rounded-full px-4 py-2 text-sm font-semibold uppercase tracking-[0.18em] transition ${
+              activeFilter === item.type
+                ? `status-pill status-pill--${item.tone}`
+                : "bg-slate-100 text-slate-700 hover:bg-white"
+            }`}
+            >
+            {translate(item.label)}
+          </button>
+        ))}
+      </div>
+
+      <div className="overflow-x-auto pb-2">
+        <div className="min-w-[44rem] grid gap-3">
+          <div className="grid grid-cols-7 gap-2 text-center text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
+            {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day) => (
+              <div key={day} className="py-2">
+                {translate(day)}
+              </div>
+            ))}
+          </div>
+
+          <div className="grid grid-cols-7 gap-2">
+            {days.map((day) => (
+              <button
+                type="button"
+                key={day.isoDate}
+                onClick={() => {
+                  if (day.actions.length) {
+                    onSelectDate(day.isoDate);
+                  }
+                }}
+                className={`aspect-square min-h-[96px] rounded-[1.3rem] border p-3 align-top ${
+                  day.isCurrentMonth
+                    ? "border-slate-200 bg-white"
+                    : "border-slate-100 bg-slate-50 text-slate-400"
+                } ${
+                  day.actions.length
+                    ? "text-left transition hover:border-emerald-300 hover:shadow-soft"
+                    : "text-left"
+                }`}
+              >
+                <div className="flex h-full flex-col justify-between">
+                  <div className="flex items-start justify-between gap-2">
+                    <span className="text-sm font-semibold">{day.label}</span>
+                    {day.actions.length ? (
+                      <span className="rounded-full bg-slate-100 px-2 py-1 text-[10px] font-semibold text-slate-700">
+                        {day.actions.length}
+                      </span>
+                    ) : null}
+                  </div>
+
+                  {day.actions.length ? (
+                    <div className="grid gap-2">
+                      <div className="flex flex-wrap gap-1">
+                        {day.actions.slice(0, 4).map((action) => (
+                          <span
+                            key={`${day.isoDate}-${action.type}-${action.shortLabel}`}
+                            className={`h-3 w-3 rounded-full ${
+                              actionStatuses[action.id]?.done
+                                ? "bg-slate-300"
+                                : plannerEventDot(action.type)
+                            }`}
+                          />
+                        ))}
+                      </div>
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
+                        View actions
+                      </p>
+                    </div>
+                  ) : (
+                    <span className="text-[11px] font-medium text-slate-300">
+                      {translate("No actions")}
+                    </span>
+                  )}
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -1929,7 +3022,8 @@ function RecommendationColumn({
   items = [],
   boxed = true,
   showPricing = true,
-  showCostStats = true
+  showCostStats = true,
+  translate = (value) => value
 }) {
   return (
     <article className={boxed ? "rounded-[1.9rem] border border-slate-200 bg-white p-5" : ""}>
@@ -1948,11 +3042,11 @@ function RecommendationColumn({
             </div>
             <p className="mt-3 text-sm leading-7 text-slate-600">{item.detail}</p>
             <div className="mt-4 grid gap-3 sm:grid-cols-2">
-              <MiniStat label="Content" value={item.nutrientContent} />
-              <MiniStat label="Rate" value={item.applicationRate} />
-              {showPricing ? <MiniStat label="Price range" value={item.priceRange} /> : null}
-              {showCostStats ? <MiniStat label="Cost / acre" value={item.costSummary.estimated} /> : null}
-              {showCostStats ? <MiniStat label="Total plan" value={item.costSummary.total} /> : null}
+              <MiniStat label={translate("Content")} value={item.nutrientContent} />
+              <MiniStat label={translate("Rate")} value={item.applicationRate} />
+              {showPricing ? <MiniStat label={translate("Price range")} value={item.priceRange} /> : null}
+              {showCostStats ? <MiniStat label={translate("Cost / acre")} value={item.costSummary.estimated} /> : null}
+              {showCostStats ? <MiniStat label={translate("Total plan")} value={item.costSummary.total} /> : null}
             </div>
             <p className="mt-4 rounded-[1.2rem] bg-white px-4 py-3 text-sm text-slate-600">
               {item.note}
@@ -1964,7 +3058,7 @@ function RecommendationColumn({
   );
 }
 
-function RecommendationCostGroup({ title, items = [] }) {
+function RecommendationCostGroup({ title, items = [], translate = (value) => value }) {
   return (
     <div className="grid gap-4">
       <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">{title}</p>
@@ -1980,9 +3074,9 @@ function RecommendationCostGroup({ title, items = [] }) {
             </span>
           </div>
           <div className="mt-4 grid gap-3 sm:grid-cols-3">
-            <MiniStat label="Price range" value={item.priceRange} />
-            <MiniStat label="Cost / acre" value={item.costSummary.estimated} />
-            <MiniStat label="Total plan" value={item.costSummary.total} />
+            <MiniStat label={translate("Price range")} value={item.priceRange} />
+            <MiniStat label={translate("Cost / acre")} value={item.costSummary.estimated} />
+            <MiniStat label={translate("Total plan")} value={item.costSummary.total} />
           </div>
         </article>
       ))}
@@ -2087,7 +3181,7 @@ function RealtimeMetricCard({ item, statusLabel }) {
   );
 }
 
-function DonutChart({ segments }) {
+function DonutChart({ segments, translate = (value) => value }) {
   const total = segments.reduce((sum, segment) => sum + segment.chartValue, 0) || 1;
   let cursor = 0;
   const gradientStops = segments
@@ -2109,7 +3203,7 @@ function DonutChart({ segments }) {
           <div className="grid h-28 w-28 place-items-center rounded-full bg-white shadow-soft">
             <div className="text-center">
               <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">
-                Live mix
+                {translate("Live mix")}
               </p>
               <p className="mt-2 font-display text-3xl font-black text-slate-950">
                 {segments.length}
@@ -2274,6 +3368,7 @@ function ChatWidget({
   messages,
   input,
   busy,
+  translate = (value) => value,
   onInputChange,
   onSubmit
 }) {
@@ -2467,7 +3562,7 @@ function ChatWidget({
                 onClick={onToggle}
                 className="rounded-full bg-white/10 px-3 py-1 text-sm font-semibold"
               >
-                Close
+                {translate("Close")}
               </button>
             </div>
           </div>
@@ -2554,7 +3649,7 @@ function ChatWidget({
                   disabled={busy}
                   className="rounded-full bg-slate-950 px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60"
                 >
-                  {busy ? "Sending..." : uiText.sendLabel}
+                  {busy ? translate("Sending...") : uiText.sendLabel}
                 </button>
               </div>
             </div>
@@ -2576,7 +3671,7 @@ function ChatWidget({
           </div>
           <div>
             <p className="font-display text-lg font-bold">{uiText.launcherTitle}</p>
-            <p className="text-sm text-white/70">Open assistant</p>
+            <p className="text-sm text-white/70">{translate("Open assistant")}</p>
           </div>
         </div>
       </button>
@@ -2626,6 +3721,320 @@ function bandTone(label) {
   }
 
   return severityTone(label);
+}
+
+const PLANNER_EVENT_TYPES = [
+  { type: "Seeding", label: "Seeding", tone: "sky" },
+  { type: "Irrigation", label: "Irrigation", tone: "sky" },
+  { type: "Fertilizer", label: "Fertilizer", tone: "emerald" },
+  { type: "Weeding", label: "Weeding", tone: "amber" },
+  { type: "Pesticide", label: "Pesticide", tone: "rose" },
+  { type: "Monitoring", label: "Monitoring", tone: "violet" },
+  { type: "Harvest", label: "Harvest", tone: "indigo" }
+];
+
+function plannerEventTone(type) {
+  const value = String(type || "").toLowerCase();
+
+  if (value.includes("fertilizer")) {
+    return "emerald";
+  }
+
+  if (value.includes("weeding")) {
+    return "amber";
+  }
+
+  if (value.includes("pesticide")) {
+    return "rose";
+  }
+
+  if (value.includes("monitor")) {
+    return "violet";
+  }
+
+  if (value.includes("harvest")) {
+    return "indigo";
+  }
+
+  return "sky";
+}
+
+function plannerEventText(type) {
+  const map = {
+    emerald: "text-emerald-600",
+    amber: "text-amber-600",
+    rose: "text-rose-600",
+    sky: "text-sky-600"
+  };
+
+  return map[plannerEventTone(type)] || "text-slate-500";
+}
+
+function plannerEventDot(type) {
+  const map = {
+    emerald: "bg-emerald-500",
+    amber: "bg-amber-500",
+    rose: "bg-rose-500",
+    sky: "bg-sky-500"
+  };
+
+  return map[plannerEventTone(type)] || "bg-slate-400";
+}
+
+function plannerEventPill(type) {
+  const map = {
+    emerald: "bg-emerald-100 text-emerald-700",
+    amber: "bg-amber-100 text-amber-700",
+    rose: "bg-rose-100 text-rose-700",
+    sky: "bg-sky-100 text-sky-700"
+  };
+
+  return map[plannerEventTone(type)] || "bg-slate-100 text-slate-700";
+}
+
+function parseIsoDate(isoDate) {
+  const match = String(isoDate || "").match(/^(\d{4})-(\d{2})-(\d{2})$/);
+
+  if (!match) {
+    const fallback = new Date();
+    fallback.setHours(0, 0, 0, 0);
+    return fallback;
+  }
+
+  const [, yearText, monthText, dayText] = match;
+  const year = Number(yearText);
+  const month = Number(monthText);
+  const day = Number(dayText);
+  const parsed = new Date(year, month - 1, day);
+
+  if (
+    Number.isNaN(parsed.valueOf()) ||
+    parsed.getFullYear() !== year ||
+    parsed.getMonth() !== month - 1 ||
+    parsed.getDate() !== day
+  ) {
+    const fallback = new Date();
+    fallback.setHours(0, 0, 0, 0);
+    return fallback;
+  }
+
+  parsed.setHours(0, 0, 0, 0);
+  return parsed;
+}
+
+function startOfMonthIso(isoDate) {
+  const date = parseIsoDate(isoDate);
+  return toIsoDate(new Date(date.getFullYear(), date.getMonth(), 1));
+}
+
+function shiftMonthIso(isoDate, offset) {
+  const date = parseIsoDate(isoDate);
+  return toIsoDate(new Date(date.getFullYear(), date.getMonth() + offset, 1));
+}
+
+function toIsoDate(date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
+}
+
+function addDaysToIsoDate(isoDate, days) {
+  const date = parseIsoDate(isoDate);
+  date.setDate(date.getDate() + days);
+  return toIsoDate(date);
+}
+
+function buildPlannerActionStatuses(actions, statusMap) {
+  return actions.reduce((accumulator, action) => {
+    accumulator[action.id] = statusMap[action.id] || {
+      done: false,
+      lastReminderAt: 0
+    };
+    return accumulator;
+  }, {});
+}
+
+function buildPlannerActions(selectedCrop, seedingDate, cropRecommendations) {
+  if (!selectedCrop || !seedingDate) {
+    return [];
+  }
+
+  const inorganic = cropRecommendations?.inorganic?.[0];
+  const organic = cropRecommendations?.organic?.[0];
+  const cropLabel = selectedCrop.label;
+  const profileKey = selectedCrop.thresholdProfileKey || "default";
+  const cropKey = String(selectedCrop.label || "").toLowerCase();
+
+  const schedules = {
+    paddy: {
+      irrigationDays: [3, 12, 26, 42],
+      monitoringDays: [18, 34, 56],
+      fertilizerDays: [0, 20, 40],
+      weedingDays: [18, 36],
+      pesticideDays: [28, 50],
+      harvestDay: 115
+    },
+    wheat: {
+      irrigationDays: [7, 24, 45, 70],
+      monitoringDays: [14, 32, 58],
+      fertilizerDays: [0, 22, 48],
+      weedingDays: [20, 38],
+      pesticideDays: [35, 62],
+      harvestDay: 120
+    },
+    corn: {
+      irrigationDays: [5, 16, 30, 48, 68],
+      monitoringDays: [12, 26, 44],
+      fertilizerDays: [0, 18, 36],
+      weedingDays: [16, 32],
+      pesticideDays: [24, 46],
+      harvestDay: 105
+    },
+    fruitingVegetable: {
+      irrigationDays: [3, 10, 18, 28, 40, 55],
+      monitoringDays: [9, 20, 34, 48],
+      fertilizerDays: [0, 16, 32, 48],
+      weedingDays: [12, 26],
+      pesticideDays: [22, 38, 54],
+      harvestDay: 80
+    },
+    rootVegetable: {
+      irrigationDays: [4, 12, 22, 36, 52],
+      monitoringDays: [10, 24, 40],
+      fertilizerDays: [0, 18, 36],
+      weedingDays: [14, 28],
+      pesticideDays: [26, 44],
+      harvestDay: 95
+    },
+    leafyVegetable: {
+      irrigationDays: [2, 8, 15, 24, 34],
+      monitoringDays: [7, 18, 28],
+      fertilizerDays: [0, 14, 26],
+      weedingDays: [10, 22],
+      pesticideDays: [18, 30],
+      harvestDay: 55
+    },
+    default: {
+      irrigationDays: [5, 16, 30, 48],
+      monitoringDays: [12, 28, 44],
+      fertilizerDays: [0, 20, 38],
+      weedingDays: [14, 30],
+      pesticideDays: [24, 42],
+      harvestDay: 100
+    }
+  };
+
+  const schedule = schedules[profileKey] || schedules.default;
+  const actions = [];
+
+  function pushAction(type, dayOffset, shortLabel, title, description) {
+    actions.push({
+      id: `${cropLabel}-${seedingDate}-${type.toLowerCase()}-${dayOffset}-${shortLabel.toLowerCase().replace(/\s+/g, "-")}`,
+      type,
+      date: addDaysToIsoDate(seedingDate, dayOffset),
+      title,
+      shortLabel,
+      description
+    });
+  }
+
+  pushAction(
+    "Seeding",
+    0,
+    "Seed",
+    `${cropLabel} seeding`,
+    `Seed ${cropLabel} on the planned date and confirm moisture availability for establishment.`
+  );
+
+  pushAction(
+    "Fertilizer",
+    schedule.fertilizerDays[0],
+    "Basal feed",
+    "Basal fertilizer application",
+    `Apply ${inorganic?.fertilizer || "the primary inorganic fertilizer"} at seeding time. Organic support can follow with ${organic?.fertilizer || "the recommended organic fertilizer"} if needed.`
+  );
+
+  schedule.irrigationDays.forEach((dayOffset, index) => {
+    pushAction(
+      "Irrigation",
+      dayOffset,
+      `Water ${index + 1}`,
+      index === 0 ? "First irrigation cycle" : `Irrigation cycle ${index + 1}`,
+      `Plan irrigation for ${cropLabel} around this date and adjust based on rainfall and soil moisture.`
+    );
+  });
+
+  schedule.monitoringDays.forEach((dayOffset, index) => {
+    pushAction(
+      "Monitoring",
+      dayOffset,
+      `Scout ${index + 1}`,
+      `Field scouting round ${index + 1}`,
+      `Inspect ${cropLabel} for nutrient stress, pest pressure, and stand uniformity before the next field operation.`
+    );
+  });
+
+  schedule.weedingDays.forEach((dayOffset, index) => {
+    pushAction(
+      "Weeding",
+      dayOffset,
+      index === 0 ? "Weeding 1" : `Weeding ${index + 1}`,
+      index === 0 ? "First weeding window" : `Weeding round ${index + 1}`,
+      `Do ${index === 0 ? "the first" : "the next"} weeding pass around this date to reduce competition in ${cropLabel}.`
+    );
+  });
+
+  schedule.fertilizerDays.slice(1).forEach((dayOffset, index) => {
+    pushAction(
+      "Fertilizer",
+      dayOffset,
+      index === 0 ? "Top dress" : `Feed ${index + 2}`,
+      index === 0 ? "Top-dress fertilizer round" : `Fertilizer round ${index + 2}`,
+      `Follow up with ${inorganic?.fertilizer || "the recommended fertilizer"} as the next nutrient round for ${cropLabel}.`
+    );
+  });
+
+  schedule.pesticideDays.forEach((dayOffset, index) => {
+    pushAction(
+      "Pesticide",
+      dayOffset,
+      index === 0 ? "Spray" : `Spray ${index + 1}`,
+      index === 0 ? "Protection spray and scout" : `Protection round ${index + 1}`,
+      `Scout the field and apply pesticide or insecticide only if symptoms or pest pressure are visible on ${cropLabel}.`
+    );
+  });
+
+  if (profileKey.includes("Vegetable") || profileKey === "fruitingVegetable") {
+    pushAction(
+      "Monitoring",
+      42,
+      "Flowering",
+      "Flowering and fruit-set check",
+      `Check flowering, fruit set, and nutrient balance for ${cropLabel} before the next support input.`
+    );
+  }
+
+  if (cropKey.includes("paddy")) {
+    pushAction(
+      "Monitoring",
+      65,
+      "Tillers",
+      "Tillering and panicle check",
+      `Inspect tiller strength and panicle development in ${cropLabel} to confirm the crop is on track.`
+    );
+  }
+
+  pushAction(
+    "Harvest",
+    schedule.harvestDay,
+    "Harvest",
+    "Harvest preparation window",
+    `Prepare labor, bags, and transport for ${cropLabel}. Confirm maturity and weather before harvest.`
+  );
+
+  return actions.sort((first, second) => first.date.localeCompare(second.date));
 }
 
 function toneSurface(tone) {

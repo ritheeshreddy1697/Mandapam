@@ -19,7 +19,6 @@ const {
   hasSupabaseConfig
 } = require("./supabase");
 const { generateChatReply } = require("./gemini");
-const { localizeSiteData, localizeDashboardData } = require("./sarvam");
 
 loadEnv();
 const PORT = process.env.PORT || 3000;
@@ -648,15 +647,7 @@ const server = http.createServer(async (req, res) => {
   if (pathname === "/api/site-data" && req.method === "GET") {
     try {
       const siteData = await getSiteData();
-      let localizedSiteData = siteData;
-
-      try {
-        localizedSiteData = await localizeSiteData(siteData, siteData.selectedLanguage);
-      } catch (error) {
-        logWarning("site-translation", error);
-      }
-
-      sendJson(res, 200, localizedSiteData);
+      sendJson(res, 200, siteData);
     } catch (error) {
       sendRouteError(res, error, "Unable to load site data.");
     }
@@ -665,22 +656,8 @@ const server = http.createServer(async (req, res) => {
 
   if (pathname === "/api/dashboard" && req.method === "GET") {
     try {
-      const [siteData, dashboardData] = await Promise.all([
-        getSiteData(),
-        getDashboardData()
-      ]);
-      let localizedDashboardData = dashboardData;
-
-      try {
-        localizedDashboardData = await localizeDashboardData(
-          dashboardData,
-          siteData.selectedLanguage
-        );
-      } catch (error) {
-        logWarning("dashboard-translation", error);
-      }
-
-      sendJson(res, 200, localizedDashboardData);
+      const dashboardData = await getDashboardData();
+      sendJson(res, 200, dashboardData);
     } catch (error) {
       sendRouteError(res, error, "Unable to load dashboard data.");
     }

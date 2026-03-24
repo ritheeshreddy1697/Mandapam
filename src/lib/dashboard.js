@@ -6,6 +6,21 @@ import {
 
 export const DEFAULT_FIELD_AREA = 42;
 
+function getFormatLocale() {
+  if (typeof document === "undefined") {
+    return "en-IN";
+  }
+
+  const languageCode = document.documentElement.lang || "en";
+  const localeMap = {
+    en: "en-IN",
+    hi: "hi-IN",
+    te: "te-IN"
+  };
+
+  return localeMap[languageCode] || "en-IN";
+}
+
 export function clamp(value, min, max) {
   return Math.min(Math.max(value, min), max);
 }
@@ -25,14 +40,14 @@ export function extractNumericValue(value) {
 }
 
 export function formatNumber(value, digits = 0) {
-  return new Intl.NumberFormat("en-IN", {
+  return new Intl.NumberFormat(getFormatLocale(), {
     minimumFractionDigits: digits,
     maximumFractionDigits: digits
   }).format(toNumber(value));
 }
 
 export function formatCurrency(value) {
-  return `Rs ${new Intl.NumberFormat("en-IN").format(Math.round(toNumber(value)))}`;
+  return `Rs ${new Intl.NumberFormat(getFormatLocale()).format(Math.round(toNumber(value)))}`;
 }
 
 export function formatDateTime(value) {
@@ -46,7 +61,7 @@ export function formatDateTime(value) {
     return "Unavailable";
   }
 
-  return new Intl.DateTimeFormat("en-IN", {
+  return new Intl.DateTimeFormat(getFormatLocale(), {
     dateStyle: "medium",
     timeStyle: "short"
   }).format(date);
@@ -63,7 +78,7 @@ export function formatDateLong(value) {
     return "Unavailable";
   }
 
-  return new Intl.DateTimeFormat("en-IN", {
+  return new Intl.DateTimeFormat(getFormatLocale(), {
     day: "numeric",
     month: "long",
     year: "numeric"
@@ -81,7 +96,7 @@ export function formatTimeOnly(value) {
     return "Unavailable";
   }
 
-  return new Intl.DateTimeFormat("en-IN", {
+  return new Intl.DateTimeFormat(getFormatLocale(), {
     hour: "numeric",
     minute: "2-digit"
   }).format(date);
