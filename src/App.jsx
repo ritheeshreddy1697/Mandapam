@@ -200,7 +200,7 @@ const FALLBACK_UI_TEXT = {
   }
 };
 
-const TRANSLATION_PATTERNS = {
+const HARD_CODED_TRANSLATIONS = {
   hi: [
     ["Startup-grade agronomy", "स्टार्टअप-ग्रेड कृषि"],
     ["Startup-ready agricultural intelligence for every field decision.", "हर खेत निर्णय के लिए तैयार कृषि बुद्धिमत्ता।"],
@@ -330,6 +330,10 @@ const TRANSLATION_PATTERNS = {
     ["Web-loaded visual references for different pests or diseases linked to the selected crop.", "चयनित फसल से जुड़े विभिन्न कीटों या रोगों के वेब-लोडेड दृश्य संदर्भ।"],
     ["Loading pest photo...", "कीट फोटो लोड हो रही है..."],
     ["Photo unavailable right now.", "फोटो अभी उपलब्ध नहीं है।"],
+    ["The deployed app could not reach its API. Make sure the backend routes are deployed correctly.", "डिप्लॉय किया गया ऐप अपने API तक नहीं पहुंच सका। कृपया सुनिश्चित करें कि बैकएंड रूट्स सही तरीके से डिप्लॉय किए गए हैं।"],
+    ["The API returned HTML instead of JSON. Check that the backend route is deployed correctly.", "API ने JSON के बजाय HTML लौटाया। कृपया जांचें कि बैकएंड रूट सही तरीके से डिप्लॉय हुआ है।"],
+    ["Unable to reach the API right now. Please try again.", "अभी API तक पहुंचा नहीं जा सका। कृपया फिर से प्रयास करें।"],
+    ["The server returned an invalid JSON response.", "सर्वर ने अमान्य JSON प्रतिक्रिया लौटाई।"],
     ["Pest", "कीट"],
     ["Search topic:", "खोज विषय:"],
     ["Source: Wikipedia", "स्रोत: विकिपीडिया"],
@@ -379,7 +383,135 @@ const TRANSLATION_PATTERNS = {
     ["Healthy", "स्वस्थ"],
     ["Optimal", "उत्तम"],
     ["Warning", "चेतावनी"],
-    ["Critical", "गंभीर"]
+    ["Critical", "गंभीर"],
+    ["Profile", "प्रोफ़ाइल"],
+    ["Farm Overview", "फार्म अवलोकन"],
+    ["Current Soil Report", "वर्तमान मिट्टी रिपोर्ट"],
+    ["Overall Soil Health", "समग्र मिट्टी स्वास्थ्य"],
+    ["Current report", "वर्तमान रिपोर्ट"],
+    ["Soil status", "मिट्टी की स्थिति"],
+    ["Active record", "सक्रिय रिकॉर्ड"],
+    ["Real Time Sensor Data", "रियल-टाइम सेंसर डेटा"],
+    ["Soil Sensor Snapshot", "मिट्टी सेंसर स्नैपशॉट"],
+    ["Environment Readings", "पर्यावरण रीडिंग"],
+    ["Soil NPK Levels Trend", "मिट्टी NPK स्तर रुझान"],
+    ["Environmental Conditions Distribution", "पर्यावरणीय स्थितियों का वितरण"],
+    ["Last Updated", "अंतिम अपडेट"],
+    ["Sunlight Intensity", "सूर्य प्रकाश तीव्रता"],
+    ["Temperature", "तापमान"],
+    ["Weather Data", "मौसम डेटा"],
+    ["Weather Trend", "मौसम रुझान"],
+    ["Nutrient Table", "पोषक तालिका"],
+    ["Nutrient", "पोषक तत्व"],
+    ["Current Value", "वर्तमान मान"],
+    ["Threshold Values", "सीमा मान"],
+    ["Band", "श्रेणी"],
+    ["Organic Fertilizers", "जैविक उर्वरक"],
+    ["Inorganic Fertilizers", "अकार्बनिक उर्वरक"],
+    ["Farm Profile", "फार्म प्रोफ़ाइल"],
+    ["Ask AgriCure AI", "AgriCure AI से पूछें"],
+    ["Field Assistant", "फील्ड सहायक"],
+    ["Soil summary", "मिट्टी सारांश"],
+    ["Fertilizer help", "उर्वरक सहायता"],
+    ["Sensor insights", "सेंसर अंतर्दृष्टि"],
+    ["Type your question...", "अपना प्रश्न लिखें..."],
+    ["Send", "भेजें"],
+    ["Manage Account", "खाता प्रबंधित करें"],
+    ["Brand examples", "ब्रांड उदाहरण"],
+    ["Agmarknet filters", "Agmarknet फ़िल्टर"],
+    ["Current prices and previous-year comparison are both pulled from Agmarknet for the selected crop and location.", "चयनित फसल और स्थान के लिए वर्तमान कीमतें और पिछले वर्ष की तुलना दोनों Agmarknet से ली गई हैं।"],
+    ["Location filters", "स्थान फ़िल्टर"],
+    ["Select state", "राज्य चुनें"],
+    ["Select district", "ज़िला चुनें"],
+    ["Choose state", "राज्य चुनें"],
+    ["Choose district", "ज़िला चुनें"],
+    ["All districts", "सभी ज़िले"],
+    ["All districts in selected state", "चयनित राज्य के सभी ज़िले"],
+    ["Market report", "बाज़ार रिपोर्ट"],
+    ["Previous year report", "पिछले वर्ष की रिपोर्ट"],
+    ["Latest report date", "नवीनतम रिपोर्ट तिथि"],
+    ["Markets reporting", "रिपोर्ट देने वाले बाज़ार"],
+    ["Average modal price", "औसत मॉडल मूल्य"],
+    ["Arrivals", "आवक"],
+    ["Min / max", "न्यूनतम / अधिकतम"],
+    ["Total arrivals", "कुल आवक"],
+    ["Reported", "रिपोर्ट की गई"],
+    ["District-specific data was not found for the latest report, so the panel is showing the broader state report.", "नवीनतम रिपोर्ट के लिए जिला-स्तर का डेटा नहीं मिला, इसलिए पैनल व्यापक राज्य रिपोर्ट दिखा रहा है।"],
+    ["No Agmarknet report is available for this selection right now.", "इस चयन के लिए अभी कोई Agmarknet रिपोर्ट उपलब्ध नहीं है।"],
+    ["Loading Agmarknet report for the selected crop and location...", "चयनित फसल और स्थान के लिए Agmarknet रिपोर्ट लोड हो रही है..."],
+    ["Farmer details", "किसान विवरण"],
+    ["Farmer name", "किसान का नाम"],
+    ["Farmer", "किसान"],
+    ["Enter farmer name", "किसान का नाम दर्ज करें"],
+    ["Land size", "भूमि का आकार"],
+    ["Example: 4.5 acres", "उदाहरण: 4.5 एकड़"],
+    ["Profile settings", "प्रोफ़ाइल सेटिंग्स"],
+    ["Update the farmer details used for dashboard context and location-based price reporting.", "डैशबोर्ड संदर्भ और स्थान-आधारित मूल्य रिपोर्टिंग में उपयोग होने वाले किसान विवरण अपडेट करें।"],
+    ["This profile drives the default Agmarknet state and district used in crop price insights across the app.", "यह प्रोफ़ाइल ऐप में फसल मूल्य जानकारी के लिए उपयोग होने वाले डिफ़ॉल्ट Agmarknet राज्य और ज़िले को तय करती है।"],
+    ["Save profile", "प्रोफ़ाइल सहेजें"],
+    ["Saving...", "सहेजा जा रहा है..."],
+    ["Updated", "अपडेट किया गया"],
+    ["State", "राज्य"],
+    ["District", "ज़िला"],
+    ["Location", "स्थान"],
+    ["Set the", "सेट करें"],
+    ["farmer profile and market location", "किसान प्रोफ़ाइल और बाज़ार स्थान"],
+    ["State filters", "राज्य फ़िल्टर"],
+    ["Central farmer support schemes", "केंद्रीय किसान सहायता योजनाएँ"],
+    ["Central insurance schemes", "केंद्रीय बीमा योजनाएँ"],
+    ["Central schemes", "केंद्रीय योजनाएँ"],
+    ["State schemes", "राज्य योजनाएँ"],
+    ["Insurance", "बीमा"],
+    ["Official advisories", "आधिकारिक परामर्श"],
+    ["Official link", "आधिकारिक लिंक"],
+    ["Protection products", "सुरक्षा उत्पाद"],
+    ["PPQS references", "PPQS संदर्भ"],
+    ["These links come from the Directorate of Plant Protection, Quarantine & Storage advisory section.", "ये लिंक पादप संरक्षण, संगरोध एवं भंडारण निदेशालय के परामर्श अनुभाग से लिए गए हैं।"],
+    ["No crop-specific PPQS advisory was matched yet for this crop.", "इस फसल के लिए अभी कोई फसल-विशिष्ट PPQS परामर्श नहीं मिला।"],
+    ["farmer schemes", "किसान योजनाएँ"],
+    ["insurance schemes", "बीमा योजनाएँ"],
+    ["Choose a state to load state-specific schemes.", "राज्य-विशिष्ट योजनाएँ लोड करने के लिए राज्य चुनें।"],
+    ["Choose a state to load state insurance schemes.", "राज्य बीमा योजनाएँ लोड करने के लिए राज्य चुनें।"],
+    ["Choose a state to load the matching state-specific scheme details.", "मिलती हुई राज्य-विशिष्ट योजना जानकारी लोड करने के लिए राज्य चुनें।"],
+    ["Choose a state to load the current crop price report and the same-month previous-year report from Agmarknet.", "Agmarknet से वर्तमान फसल मूल्य रिपोर्ट और पिछले वर्ष के उसी महीने की रिपोर्ट लोड करने के लिए राज्य चुनें।"],
+    ["Select a state for local schemes", "स्थानीय योजनाओं के लिए राज्य चुनें"],
+    ["Select a state for insurance schemes", "बीमा योजनाओं के लिए राज्य चुनें"],
+    ["Selected state", "चयनित राज्य"],
+    ["National farmer-focused schemes sourced from the Vikaspedia farmer schemes collection.", "Vikaspedia किसान योजना संग्रह से ली गई राष्ट्रीय किसान-केंद्रित योजनाएँ।"],
+    ["Central farmer schemes are shown first. After you choose a state, the panel loads farmer-focused state schemes and insurance schemes for that state from Vikaspedia.", "पहले केंद्रीय किसान योजनाएँ दिखाई जाती हैं। राज्य चुनने के बाद पैनल उस राज्य की किसान-केंद्रित राज्य योजनाएँ और बीमा योजनाएँ Vikaspedia से लोड करता है।"],
+    ["Insurance-related farmer schemes listed in the central Vikaspedia farmer collection.", "केंद्रीय Vikaspedia किसान संग्रह में सूचीबद्ध बीमा-संबंधित किसान योजनाएँ।"],
+    ["Loading government schemes from Vikaspedia...", "Vikaspedia से सरकारी योजनाएँ लोड हो रही हैं..."],
+    ["No central schemes were returned right now.", "अभी कोई केंद्रीय योजनाएँ नहीं मिलीं।"],
+    ["No central insurance schemes were returned right now.", "अभी कोई केंद्रीय बीमा योजनाएँ नहीं मिलीं।"],
+    ["No farmer-focused state schemes were matched for this selection yet.", "इस चयन के लिए अभी कोई किसान-केंद्रित राज्य योजना नहीं मिली।"],
+    ["No state insurance scheme was matched for this selection yet.", "इस चयन के लिए अभी कोई राज्य बीमा योजना नहीं मिली।"],
+    ["View Vikaspedia", "Vikaspedia देखें"],
+    ["Use when", "कब उपयोग करें"],
+    ["Check local dealer", "स्थानीय विक्रेता से जांचें"],
+    ["Source", "स्रोत"],
+    ["Very Poor", "बहुत खराब"],
+    ["Poor", "खराब"],
+    ["Moderate", "मध्यम"],
+    ["Rebuild soil health urgently - consult agronomist", "मिट्टी के स्वास्थ्य को तुरंत सुधारें - कृषि विशेषज्ञ से सलाह लें"],
+    ["Correct nutrient imbalance soon to prevent yield loss", "उपज हानि रोकने के लिए पोषक असंतुलन जल्द ठीक करें"],
+    ["Maintain nutrients carefully and keep moisture steady", "पोषक स्तर संभालकर रखें और नमी स्थिर बनाए रखें"],
+    ["Soil condition is stable for the current crop stage", "वर्तमान फसल अवस्था के लिए मिट्टी की स्थिति स्थिर है"],
+    ["Soil biological activity and nutrient balance need immediate correction.", "मिट्टी की जैविक सक्रियता और पोषक संतुलन में तुरंत सुधार की जरूरत है।"],
+    ["Targeted fertilizer support and irrigation discipline are recommended.", "लक्षित उर्वरक सहायता और अनुशासित सिंचाई की सलाह दी जाती है।"],
+    ["Monitor nutrient drift and continue balanced field management.", "पोषक बदलाव पर नजर रखें और संतुलित खेत प्रबंधन जारी रखें।"],
+    ["Current field conditions are favorable for continued crop growth.", "वर्तमान खेत परिस्थितियाँ फसल की निरंतर वृद्धि के लिए अनुकूल हैं।"],
+    ["Nitrogen (N)", "नाइट्रोजन (N)"],
+    ["Phosphorus (P)", "फॉस्फोरस (P)"],
+    ["Potassium (K)", "पोटैशियम (K)"],
+    ["pH Level", "pH स्तर"],
+    ["Electrical Conductivity", "विद्युत चालकता"],
+    ["Soil Moisture", "मिट्टी की नमी"],
+    ["Soil Temperature", "मिट्टी का तापमान"],
+    ["Root Zone Temperature", "रूट ज़ोन तापमान"],
+    ["Battery Reserve", "बैटरी रिज़र्व"],
+    ["Environment sensor", "पर्यावरण सेंसर"],
+    ["Live root-zone reading", "लाइव रूट-ज़ोन रीडिंग"],
+    ["Separate fertilizer guidance for organic inputs and inorganic nutrient correction based on the latest soil report.", "नवीनतम मिट्टी रिपोर्ट के आधार पर जैविक इनपुट और अकार्बनिक पोषक सुधार के लिए अलग उर्वरक मार्गदर्शन।"]
   ],
   te: [
     ["Startup-grade agronomy", "స్టార్టప్ స్థాయి వ్యవసాయం"],
@@ -510,6 +642,10 @@ const TRANSLATION_PATTERNS = {
     ["Web-loaded visual references for different pests or diseases linked to the selected crop.", "ఎంచుకున్న పంటకు సంబంధించిన కీటకాలు లేదా రోగాలకు వెబ్ నుండి లోడ్ అయ్యే దృశ్య సూచనలు."],
     ["Loading pest photo...", "కీటక చిత్రం లోడ్ అవుతోంది..."],
     ["Photo unavailable right now.", "చిత్రం ప్రస్తుతం అందుబాటులో లేదు."],
+    ["The deployed app could not reach its API. Make sure the backend routes are deployed correctly.", "డిప్లాయ్ చేసిన యాప్ తన API ను చేరుకోలేకపోయింది. బ్యాక్‌ఎండ్ రూట్లు సరిగ్గా డిప్లాయ్ అయ్యాయో చూడండి."],
+    ["The API returned HTML instead of JSON. Check that the backend route is deployed correctly.", "API JSON బదులుగా HTML ను ఇచ్చింది. బ్యాక్‌ఎండ్ రూట్ సరిగ్గా డిప్లాయ్ అయ్యిందో పరిశీలించండి."],
+    ["Unable to reach the API right now. Please try again.", "ప్రస్తుతం API ను చేరుకోలేకపోయాం. దయచేసి మళ్లీ ప్రయత్నించండి."],
+    ["The server returned an invalid JSON response.", "సర్వర్ అమాన్యమైన JSON ప్రతిస్పందనను ఇచ్చింది."],
     ["Pest", "కీటకం"],
     ["Search topic:", "శోధన విషయం:"],
     ["Source: Wikipedia", "మూలం: వికీపీడియా"],
@@ -557,19 +693,494 @@ const TRANSLATION_PATTERNS = {
     ["Cereal", "ధాన్యం"],
     ["Vegetable", "కూరగాయ"],
     ["Healthy", "ఆరోగ్యకరమైన"],
-    ["Optimal", "ఉత్తమం"],
+    ["Optimal", "అనుకూలం"],
     ["Warning", "హెచ్చరిక"],
-    ["Critical", "క్రిటికల్"]
+    ["Critical", "తీవ్రమైన"],
+    ["Profile", "ప్రొఫైల్"],
+    ["Farm Overview", "ఫార్మ్ అవలోకనం"],
+    ["Current Soil Report", "ప్రస్తుత మట్టి నివేదిక"],
+    ["Overall Soil Health", "మొత్తం మట్టి ఆరోగ్యం"],
+    ["Current report", "ప్రస్తుత నివేదిక"],
+    ["Soil status", "మట్టి స్థితి"],
+    ["Active record", "సక్రియ నమోదు"],
+    ["Real Time Sensor Data", "రియల్‌టైమ్ సెన్సార్ డేటా"],
+    ["Soil Sensor Snapshot", "మట్టి సెన్సార్ స్నాప్‌షాట్"],
+    ["Environment Readings", "పర్యావరణ రీడింగ్స్"],
+    ["Soil NPK Levels Trend", "మట్టి NPK స్థాయుల ధోరణి"],
+    ["Environmental Conditions Distribution", "పర్యావరణ పరిస్థితుల పంపిణీ"],
+    ["Last Updated", "చివరిసారిగా నవీకరించబడింది"],
+    ["Sunlight Intensity", "సూర్యకాంతి తీవ్రత"],
+    ["Temperature", "ఉష్ణోగ్రత"],
+    ["Weather Data", "వాతావరణ డేటా"],
+    ["Weather Trend", "వాతావరణ ధోరణి"],
+    ["Nutrient Table", "పోషకాల పట్టిక"],
+    ["Nutrient", "పోషకం"],
+    ["Current Value", "ప్రస్తుత విలువ"],
+    ["Threshold Values", "పరిమితి విలువలు"],
+    ["Band", "స్థాయి"],
+    ["Organic Fertilizers", "సేంద్రియ ఎరువులు"],
+    ["Inorganic Fertilizers", "రసాయన ఎరువులు"],
+    ["Farm Profile", "ఫార్మ్ ప్రొఫైల్"],
+    ["Ask AgriCure AI", "AgriCure AI ను అడగండి"],
+    ["Field Assistant", "పొల సహాయకుడు"],
+    ["Soil summary", "మట్టి సారాంశం"],
+    ["Fertilizer help", "ఎరువు సహాయం"],
+    ["Sensor insights", "సెన్సార్ సమాచారం"],
+    ["Type your question...", "మీ ప్రశ్నను టైప్ చేయండి..."],
+    ["Send", "పంపండి"],
+    ["Manage Account", "ఖాతా నిర్వహణ"],
+    ["Brand examples", "బ్రాండ్ ఉదాహరణలు"],
+    ["Agmarknet filters", "Agmarknet ఫిల్టర్లు"],
+    ["Current prices and previous-year comparison are both pulled from Agmarknet for the selected crop and location.", "ఎంచుకున్న పంట మరియు ప్రాంతానికి సంబంధించిన ప్రస్తుత ధరలు, గత సంవత్సరంతో పోలిక రెండూ Agmarknet నుంచి తీసుకురాబడ్డాయి."],
+    ["Location filters", "ప్రాంత ఫిల్టర్లు"],
+    ["Select state", "రాష్ట్రాన్ని ఎంచుకోండి"],
+    ["Select district", "జిల్లాను ఎంచుకోండి"],
+    ["Choose state", "రాష్ట్రాన్ని ఎంచుకోండి"],
+    ["Choose district", "జిల్లాను ఎంచుకోండి"],
+    ["All districts", "అన్ని జిల్లాలు"],
+    ["All districts in selected state", "ఎంచుకున్న రాష్ట్రంలోని అన్ని జిల్లాలు"],
+    ["Market report", "మార్కెట్ నివేదిక"],
+    ["Previous year report", "గత సంవత్సరం నివేదిక"],
+    ["Latest report date", "తాజా నివేదిక తేదీ"],
+    ["Markets reporting", "నివేదిక ఇచ్చిన మార్కెట్లు"],
+    ["Average modal price", "సగటు మోడల్ ధర"],
+    ["Arrivals", "ఆవకలు"],
+    ["Min / max", "కనిష్ట / గరిష్ట"],
+    ["Total arrivals", "మొత్తం ఆవకలు"],
+    ["Reported", "నివేదించబడింది"],
+    ["District-specific data was not found for the latest report, so the panel is showing the broader state report.", "తాజా నివేదికకు జిల్లా-స్థాయి డేటా లభించలేదు, అందుకే ప్యానెల్ విస్తృత రాష్ట్ర నివేదికను చూపిస్తోంది."],
+    ["No Agmarknet report is available for this selection right now.", "ఈ ఎంపికకు ప్రస్తుతం Agmarknet నివేదిక అందుబాటులో లేదు."],
+    ["Loading Agmarknet report for the selected crop and location...", "ఎంచుకున్న పంట మరియు ప్రాంతానికి సంబంధించిన Agmarknet నివేదిక లోడ్ అవుతోంది..."],
+    ["Farmer details", "రైతు వివరాలు"],
+    ["Farmer name", "రైతు పేరు"],
+    ["Farmer", "రైతు"],
+    ["Enter farmer name", "రైతు పేరును నమోదు చేయండి"],
+    ["Land size", "భూమి విస్తీర్ణం"],
+    ["Example: 4.5 acres", "ఉదాహరణ: 4.5 ఎకరాలు"],
+    ["Profile settings", "ప్రొఫైల్ సెట్టింగ్స్"],
+    ["Update the farmer details used for dashboard context and location-based price reporting.", "డ్యాష్‌బోర్డ్ సందర్భం మరియు ప్రాంతానికి సంబంధించిన ధరల నివేదికల కోసం ఉపయోగించే రైతు వివరాలను నవీకరించండి."],
+    ["This profile drives the default Agmarknet state and district used in crop price insights across the app.", "ఈ ప్రొఫైల్ యాప్ అంతటా పంట ధర వివరాల కోసం ఉపయోగించే డిఫాల్ట్ Agmarknet రాష్ట్రం మరియు జిల్లాను నిర్ణయిస్తుంది."],
+    ["Save profile", "ప్రొఫైల్ సేవ్ చేయండి"],
+    ["Saving...", "సేవ్ అవుతోంది..."],
+    ["Updated", "నవీకరించబడింది"],
+    ["State", "రాష్ట్రం"],
+    ["District", "జిల్లా"],
+    ["Location", "ప్రాంతం"],
+    ["Set the", "సెట్ చేయండి"],
+    ["farmer profile and market location", "రైతు ప్రొఫైల్ మరియు మార్కెట్ ప్రాంతం"],
+    ["State filters", "రాష్ట్ర ఫిల్టర్లు"],
+    ["Central farmer support schemes", "కేంద్ర రైతు మద్దతు పథకాలు"],
+    ["Central insurance schemes", "కేంద్ర బీమా పథకాలు"],
+    ["Central schemes", "కేంద్ర పథకాలు"],
+    ["State schemes", "రాష్ట్ర పథకాలు"],
+    ["Insurance", "బీమా"],
+    ["Official advisories", "అధికారిక సలహాలు"],
+    ["Official link", "అధికారిక లింక్"],
+    ["Protection products", "రక్షణ ఉత్పత్తులు"],
+    ["PPQS references", "PPQS సూచనలు"],
+    ["These links come from the Directorate of Plant Protection, Quarantine & Storage advisory section.", "ఈ లింకులు Plant Protection, Quarantine & Storage డైరెక్టరేట్ సలహా విభాగం నుంచి తీసుకోబడ్డాయి."],
+    ["No crop-specific PPQS advisory was matched yet for this crop.", "ఈ పంటకు సంబంధించిన ప్రత్యేక PPQS సలహా ఇంకా దొరకలేదు."],
+    ["farmer schemes", "రైతు పథకాలు"],
+    ["insurance schemes", "బీమా పథకాలు"],
+    ["Choose a state to load state-specific schemes.", "రాష్ట్రానికి ప్రత్యేకమైన పథకాలను లోడ్ చేయడానికి ఒక రాష్ట్రాన్ని ఎంచుకోండి."],
+    ["Choose a state to load state insurance schemes.", "రాష్ట్ర బీమా పథకాలను లోడ్ చేయడానికి ఒక రాష్ట్రాన్ని ఎంచుకోండి."],
+    ["Choose a state to load the matching state-specific scheme details.", "సరిపోయే రాష్ట్ర-ప్రత్యేక పథకం వివరాలను లోడ్ చేయడానికి ఒక రాష్ట్రాన్ని ఎంచుకోండి."],
+    ["Choose a state to load the current crop price report and the same-month previous-year report from Agmarknet.", "ప్రస్తుత పంట ధర నివేదికను మరియు గత సంవత్సరం అదే నెల నివేదికను Agmarknet నుంచి లోడ్ చేయడానికి రాష్ట్రాన్ని ఎంచుకోండి."],
+    ["Select a state for local schemes", "స్థానిక పథకాల కోసం రాష్ట్రాన్ని ఎంచుకోండి"],
+    ["Select a state for insurance schemes", "బీమా పథకాల కోసం రాష్ట్రాన్ని ఎంచుకోండి"],
+    ["Selected state", "ఎంచుకున్న రాష్ట్రం"],
+    ["National farmer-focused schemes sourced from the Vikaspedia farmer schemes collection.", "Vikaspedia రైతు పథకాల సేకరణ నుంచి తీసుకున్న జాతీయ రైతు-కేంద్రిత పథకాలు."],
+    ["Central farmer schemes are shown first. After you choose a state, the panel loads farmer-focused state schemes and insurance schemes for that state from Vikaspedia.", "మొదట కేంద్ర రైతు పథకాలు చూపబడతాయి. మీరు రాష్ట్రాన్ని ఎంచుకున్న తర్వాత, ఆ రాష్ట్రానికి సంబంధించిన రైతు-కేంద్రిత రాష్ట్ర పథకాలు మరియు బీమా పథకాలను ప్యానెల్ Vikaspedia నుంచి లోడ్ చేస్తుంది."],
+    ["Insurance-related farmer schemes listed in the central Vikaspedia farmer collection.", "కేంద్ర Vikaspedia రైతు సేకరణలో ఉన్న బీమా సంబంధిత రైతు పథకాలు."],
+    ["Loading government schemes from Vikaspedia...", "Vikaspedia నుంచి ప్రభుత్వ పథకాలు లోడ్ అవుతున్నాయి..."],
+    ["No central schemes were returned right now.", "ప్రస్తుతం కేంద్ర పథకాలు ఏవీ లభించలేదు."],
+    ["No central insurance schemes were returned right now.", "ప్రస్తుతం కేంద్ర బీమా పథకాలు ఏవీ లభించలేదు."],
+    ["No farmer-focused state schemes were matched for this selection yet.", "ఈ ఎంపికకు సంబంధించిన రైతు-కేంద్రిత రాష్ట్ర పథకాలు ఇంకా లభించలేదు."],
+    ["No state insurance scheme was matched for this selection yet.", "ఈ ఎంపికకు సంబంధించిన రాష్ట్ర బీమా పథకం ఇంకా లభించలేదు."],
+    ["View Vikaspedia", "Vikaspedia చూడండి"],
+    ["Use when", "ఎప్పుడు ఉపయోగించాలి"],
+    ["Check local dealer", "స్థానిక విక్రేత వద్ద తనిఖీ చేయండి"],
+    ["Source", "మూలం"],
+    ["Very Poor", "చాలా బలహీనమైనది"],
+    ["Poor", "బలహీనమైనది"],
+    ["Moderate", "మధ్యస్థం"],
+    ["Rebuild soil health urgently - consult agronomist", "మట్టి ఆరోగ్యాన్ని తక్షణం మెరుగుపరచండి - వ్యవసాయ నిపుణుడిని సంప్రదించండి"],
+    ["Correct nutrient imbalance soon to prevent yield loss", "దిగుబడి నష్టాన్ని నివారించేందుకు పోషకాల అసమతుల్యతను త్వరగా సరిచేయండి"],
+    ["Maintain nutrients carefully and keep moisture steady", "పోషకాలను జాగ్రత్తగా నిలబెట్టండి మరియు తేమను స్థిరంగా ఉంచండి"],
+    ["Soil condition is stable for the current crop stage", "ప్రస్తుత పంట దశకు మట్టి పరిస్థితి స్థిరంగా ఉంది"],
+    ["Soil biological activity and nutrient balance need immediate correction.", "మట్టిలో జీవ క్రియాశీలత మరియు పోషకాల సమతుల్యతకు తక్షణ సవరణ అవసరం."],
+    ["Targeted fertilizer support and irrigation discipline are recommended.", "లక్ష్యిత ఎరువు మద్దతు మరియు క్రమబద్ధమైన పారుదల సిఫార్సు చేయబడుతున్నాయి."],
+    ["Monitor nutrient drift and continue balanced field management.", "పోషకాల మార్పులను గమనించి సమతుల్యమైన పొల నిర్వహణను కొనసాగించండి."],
+    ["Current field conditions are favorable for continued crop growth.", "ప్రస్తుత పొల పరిస్థితులు పంట పెరుగుదలకు అనుకూలంగా ఉన్నాయి."],
+    ["Nitrogen (N)", "నైట్రోజన్ (N)"],
+    ["Phosphorus (P)", "ఫాస్ఫరస్ (P)"],
+    ["Potassium (K)", "పొటాషియం (K)"],
+    ["pH Level", "pH స్థాయి"],
+    ["Electrical Conductivity", "విద్యుత్ వాహకత"],
+    ["Soil Moisture", "మట్టి తేమ"],
+    ["Soil Temperature", "మట్టి ఉష్ణోగ్రత"],
+    ["Root Zone Temperature", "రూట్ జోన్ ఉష్ణోగ్రత"],
+    ["Battery Reserve", "బ్యాటరీ నిల్వ"],
+    ["Environment sensor", "పర్యావరణ సెన్సార్"],
+    ["Live root-zone reading", "ప్రత్యక్ష రూట్-జోన్ రీడింగ్"],
+    ["Separate fertilizer guidance for organic inputs and inorganic nutrient correction based on the latest soil report.", "తాజా మట్టి నివేదిక ఆధారంగా సేంద్రియ ఇన్‌పుట్లు మరియు రసాయన పోషక సవరణకు వేర్వేరు ఎరువు మార్గదర్శనం."]
   ]
 };
+
+const RESIDUAL_TRANSLATIONS = {
+  hi: [
+    ["AgriCure AI", "एग्रीक्योर एआई"],
+    ["AgriCure", "एग्रीक्योर"],
+    ["Field copilot", "फील्ड सहायक"],
+    ["Voice input is not supported in this browser.", "इस ब्राउज़र में वॉइस इनपुट समर्थित नहीं है।"],
+    ["Listening in selected language...", "चयनित भाषा में सुन रहा है..."],
+    ["Voice chat ready", "वॉइस चैट तैयार है"],
+    ["Start voice", "वॉइस शुरू करें"],
+    ["Stop voice", "वॉइस रोकें"],
+    ["Thinking through your farm data...", "आपके खेत के डेटा का विश्लेषण किया जा रहा है..."],
+    ["You", "आप"],
+    ["Status", "स्थिति"],
+    ["Field", "खेत"],
+    ["copilot", "सहायक"],
+    ["Dashboard", "डैशबोर्ड"],
+    ["Select", "चुनें"],
+    ["Crop", "फसल"],
+    ["Crops", "फसलें"],
+    ["Recommendation", "सिफारिश"],
+    ["Recommendations", "सिफारिशें"],
+    ["Fertilizer", "उर्वरक"],
+    ["Organic", "जैविक"],
+    ["Inorganic", "अकार्बनिक"],
+    ["Soil", "मिट्टी"],
+    ["Sensor", "सेंसर"],
+    ["Sensors", "सेंसर"],
+    ["Data", "डेटा"],
+    ["Weather", "मौसम"],
+    ["Report", "रिपोर्ट"],
+    ["Current", "वर्तमान"],
+    ["Latest", "नवीनतम"],
+    ["Real Time", "रियल-टाइम"],
+    ["Environment", "पर्यावरण"],
+    ["Readings", "रीडिंग्स"],
+    ["Reading", "रीडिंग"],
+    ["Temperature", "तापमान"],
+    ["Moisture", "नमी"],
+    ["Humidity", "आर्द्रता"],
+    ["Battery", "बैटरी"],
+    ["Reserve", "रिज़र्व"],
+    ["Network", "नेटवर्क"],
+    ["Probe", "प्रोब"],
+    ["average", "औसत"],
+    ["Average", "औसत"],
+    ["Active", "सक्रिय"],
+    ["Support", "समर्थन"],
+    ["Maintenance", "रखरखाव"],
+    ["Correction", "सुधार"],
+    ["Application", "प्रयोग"],
+    ["Dose", "मात्रा"],
+    ["Growth", "वृद्धि"],
+    ["Nutrient", "पोषक"],
+    ["Nutrients", "पोषक तत्व"],
+    ["Nitrogen", "नाइट्रोजन"],
+    ["Phosphorus", "फॉस्फोरस"],
+    ["Potassium", "पोटैशियम"],
+    ["Level", "स्तर"],
+    ["Target", "लक्ष्य"],
+    ["Low", "कम"],
+    ["Medium", "मध्यम"],
+    ["High", "उच्च"],
+    ["Healthy", "स्वस्थ"],
+    ["Critical", "गंभीर"],
+    ["Warning", "चेतावनी"],
+    ["Summary", "सारांश"],
+    ["Planning", "योजना"],
+    ["Action", "कार्य"],
+    ["Actions", "कार्य"],
+    ["Irrigation", "सिंचाई"],
+    ["Weeding", "निराई"],
+    ["Monitoring", "निगरानी"],
+    ["Harvest", "कटाई"],
+    ["Seeding", "बुवाई"],
+    ["Protection", "सुरक्षा"],
+    ["Cycle", "चक्र"],
+    ["Schedule", "कार्यक्रम"],
+    ["Overview", "अवलोकन"],
+    ["Profile", "प्रोफ़ाइल"],
+    ["Market", "बाज़ार"],
+    ["Price", "मूल्य"],
+    ["Prices", "मूल्य"],
+    ["Cost", "लागत"],
+    ["Total", "कुल"],
+    ["State", "राज्य"],
+    ["District", "ज़िला"],
+    ["Scheme", "योजना"],
+    ["Schemes", "योजनाएँ"],
+    ["Insurance", "बीमा"],
+    ["Farmer", "किसान"],
+    ["Name", "नाम"],
+    ["Official", "आधिकारिक"],
+    ["Link", "लिंक"],
+    ["Advisory", "परामर्श"],
+    ["Source", "स्रोत"],
+    ["Latest", "नवीनतम"],
+    ["Network", "नेटवर्क"],
+    ["Battery", "बैटरी"],
+    ["Urea", "यूरिया"],
+    ["Calcium Ammonium Nitrate", "कैल्शियम अमोनियम नाइट्रेट"],
+    ["Diammonium Phosphate", "डायमोनियम फॉस्फेट"],
+    ["Single Super Phosphate", "सिंगल सुपर फॉस्फेट"],
+    ["Muriate of Potash", "म्यूरिएट ऑफ पोटाश"],
+    ["Potash", "पोटाश"],
+    ["Blood Meal", "ब्लड मील"],
+    ["Neem Cake", "नीम केक"],
+    ["Bone Meal", "बोन मील"],
+    ["Poultry Manure", "पोल्ट्री खाद"],
+    ["Compost", "कम्पोस्ट"],
+    ["PROM", "प्रोम"],
+    ["DAP", "डीएपी"],
+    ["SSP", "एसएसपी"],
+    ["MOP", "एमओपी"],
+    ["CAN", "सीएएन"],
+    ["MAP", "एमएपी"],
+    ["SOP", "एसओपी"],
+    ["NPK", "एनपीके"],
+    ["PPQS", "पीपीक्यूएस"],
+    ["Wikipedia", "विकिपीडिया"],
+    ["Vikaspedia", "विकासपीडिया"],
+    ["Agmarknet", "एगमार्कनेट"],
+    ["kg", "किग्रा"],
+    ["acre", "एकड़"],
+    ["acres", "एकड़"],
+    ["quintal", "क्विंटल"],
+    ["lux", "लक्स"],
+    ["ms", "मि.से."],
+    ["Rs", "रु"]
+  ],
+  te: [
+    ["AgriCure AI", "అగ్రిక్యూర్ ఏఐ"],
+    ["AgriCure", "అగ్రిక్యూర్"],
+    ["Field copilot", "పొల సహాయకుడు"],
+    ["Voice input is not supported in this browser.", "ఈ బ్రౌజర్‌లో వాయిస్ ఇన్‌పుట్‌కు మద్దతు లేదు."],
+    ["Listening in selected language...", "ఎంచుకున్న భాషలో వింటోంది..."],
+    ["Voice chat ready", "వాయిస్ చాట్ సిద్ధంగా ఉంది"],
+    ["Start voice", "వాయిస్ ప్రారంభించండి"],
+    ["Stop voice", "వాయిస్ ఆపండి"],
+    ["Thinking through your farm data...", "మీ పొల డేటాను విశ్లేషిస్తోంది..."],
+    ["You", "మీరు"],
+    ["Status", "స్థితి"],
+    ["Field", "పొల"],
+    ["copilot", "సహాయకుడు"],
+    ["Dashboard", "డ్యాష్‌బోర్డ్"],
+    ["Select", "ఎంచుకోండి"],
+    ["Crop", "పంట"],
+    ["Crops", "పంటలు"],
+    ["Recommendation", "సిఫార్సు"],
+    ["Recommendations", "సిఫార్సులు"],
+    ["Fertilizer", "ఎరువు"],
+    ["Organic", "సేంద్రియ"],
+    ["Inorganic", "రసాయన"],
+    ["Soil", "మట్టి"],
+    ["Sensor", "సెన్సార్"],
+    ["Sensors", "సెన్సార్లు"],
+    ["Data", "డేటా"],
+    ["Weather", "వాతావరణం"],
+    ["Report", "నివేదిక"],
+    ["Current", "ప్రస్తుత"],
+    ["Latest", "తాజా"],
+    ["Real Time", "రియల్‌టైమ్"],
+    ["Environment", "పర్యావరణం"],
+    ["Readings", "రీడింగ్స్"],
+    ["Reading", "రీడింగ్"],
+    ["Temperature", "ఉష్ణోగ్రత"],
+    ["Moisture", "తేమ"],
+    ["Humidity", "ఆర్ద్రత"],
+    ["Battery", "బ్యాటరీ"],
+    ["Reserve", "నిల్వ"],
+    ["Network", "నెట్‌వర్క్"],
+    ["Probe", "ప్రోబ్"],
+    ["average", "సగటు"],
+    ["Average", "సగటు"],
+    ["Active", "సక్రియ"],
+    ["Support", "మద్దతు"],
+    ["Maintenance", "నిర్వహణ"],
+    ["Correction", "సరిదిద్దడం"],
+    ["Application", "వర్తింపు"],
+    ["Dose", "మోతాదు"],
+    ["Growth", "వృద్ధి"],
+    ["Nutrient", "పోషకం"],
+    ["Nutrients", "పోషకాలు"],
+    ["Nitrogen", "నైట్రోజన్"],
+    ["Phosphorus", "ఫాస్ఫరస్"],
+    ["Potassium", "పొటాషియం"],
+    ["Level", "స్థాయి"],
+    ["Target", "లక్ష్యం"],
+    ["Low", "తక్కువ"],
+    ["Medium", "మధ్యస్థ"],
+    ["High", "అధిక"],
+    ["Healthy", "ఆరోగ్యకరమైన"],
+    ["Critical", "తీవ్రమైన"],
+    ["Warning", "హెచ్చరిక"],
+    ["Summary", "సారాంశం"],
+    ["Planning", "ప్రణాళిక"],
+    ["Action", "చర్య"],
+    ["Actions", "చర్యలు"],
+    ["Irrigation", "పారుదల"],
+    ["Weeding", "కలుపు తొలగింపు"],
+    ["Monitoring", "పర్యవేక్షణ"],
+    ["Harvest", "పంట కోత"],
+    ["Seeding", "విత్తనం"],
+    ["Protection", "రక్షణ"],
+    ["Cycle", "చక్రం"],
+    ["Schedule", "షెడ్యూల్"],
+    ["Overview", "అవలోకనం"],
+    ["Profile", "ప్రొఫైల్"],
+    ["Market", "మార్కెట్"],
+    ["Price", "ధర"],
+    ["Prices", "ధరలు"],
+    ["Cost", "ఖర్చు"],
+    ["Total", "మొత్తం"],
+    ["State", "రాష్ట్రం"],
+    ["District", "జిల్లా"],
+    ["Scheme", "పథకం"],
+    ["Schemes", "పథకాలు"],
+    ["Insurance", "బీమా"],
+    ["Farmer", "రైతు"],
+    ["Name", "పేరు"],
+    ["Official", "అధికారిక"],
+    ["Link", "లింక్"],
+    ["Advisory", "సలహా"],
+    ["Source", "మూలం"],
+    ["Urea", "యూరియా"],
+    ["Calcium Ammonium Nitrate", "కాల్షియం అమ్మోనియం నైట్రేట్"],
+    ["Diammonium Phosphate", "డైఅమ్మోనియం ఫాస్ఫేట్"],
+    ["Single Super Phosphate", "సింగిల్ సూపర్ ఫాస్ఫేట్"],
+    ["Muriate of Potash", "మ్యూరియేట్ ఆఫ్ పొటాష్"],
+    ["Potash", "పొటాష్"],
+    ["Blood Meal", "బ్లడ్ మీల్"],
+    ["Neem Cake", "నీమ్కేక్"],
+    ["Bone Meal", "బోన్ మీల్"],
+    ["Poultry Manure", "పోల్ట్రీ ఎరువు"],
+    ["Compost", "కంపోస్ట్"],
+    ["PROM", "ప్రమ్"],
+    ["DAP", "డీఏపీ"],
+    ["SSP", "ఎస్‌ఎస్‌పీ"],
+    ["MOP", "ఎంఓపీ"],
+    ["CAN", "సీఏఎన్"],
+    ["MAP", "ఎంఏపీ"],
+    ["SOP", "ఎస్‌ఓపీ"],
+    ["NPK", "ఎన్‌పీకే"],
+    ["PPQS", "పీపీక్యూఎస్"],
+    ["Wikipedia", "వికీపీడియా"],
+    ["Vikaspedia", "వికాస్‌పీడియా"],
+    ["Agmarknet", "అగ్‌మార్క్‌నెట్"],
+    ["kg", "కిలో"],
+    ["acre", "ఎకరం"],
+    ["acres", "ఎకరాలు"],
+    ["quintal", "క్వింటాల్"],
+    ["lux", "లక్స్"],
+    ["ms", "మి.సె."],
+    ["Rs", "రూ"]
+  ]
+};
+
+const LETTER_NAMES = {
+  hi: {
+    a: "ए", b: "बी", c: "सी", d: "डी", e: "ई", f: "एफ", g: "जी", h: "एच", i: "आई",
+    j: "जे", k: "के", l: "एल", m: "एम", n: "एन", o: "ओ", p: "पी", q: "क्यू", r: "आर",
+    s: "एस", t: "टी", u: "यू", v: "वी", w: "डब्ल्यू", x: "एक्स", y: "वाई", z: "जेड"
+  },
+  te: {
+    a: "ఏ", b: "బీ", c: "సీ", d: "డీ", e: "ఈ", f: "ఎఫ్", g: "జీ", h: "హెచ్", i: "ఐ",
+    j: "జే", k: "కే", l: "ఎల్", m: "ఎం", n: "ఎన్", o: "ఓ", p: "పీ", q: "క్యూ", r: "ఆర్",
+    s: "ఎస్", t: "టీ", u: "యూ", v: "వీ", w: "డబ్ల్యూ", x: "ఎక్స్", y: "వై", z: "జెడ్"
+  }
+};
+
+function escapeRegExp(value) {
+  return String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function replaceHardCodedPhrase(current, source, target) {
+  if (current === source) {
+    return target;
+  }
+
+  const escapedSource = escapeRegExp(source);
+  const usesWordBoundaries = /^[A-Za-z0-9]/.test(source) && /[A-Za-z0-9)]$/.test(source);
+
+  if (usesWordBoundaries) {
+    return current.replace(
+      new RegExp(`(^|[^A-Za-z0-9])${escapedSource}(?=$|[^A-Za-z0-9])`, "g"),
+      (match, prefix) => `${prefix}${target}`
+    );
+  }
+
+  return current.replace(new RegExp(escapedSource, "g"), target);
+}
+
+function spellLatinToken(token, languageCode) {
+  const letterNames = LETTER_NAMES[languageCode];
+
+  if (!letterNames) {
+    return token;
+  }
+
+  return token.replace(/[A-Za-z]/g, (character) => letterNames[character.toLowerCase()] || character);
+}
+
+function localizeResidualLatinText(value, languageCode) {
+  if (languageCode === "en" || typeof value !== "string" || !/[A-Za-z]/.test(value)) {
+    return value;
+  }
+
+  const residualPatterns = [...(RESIDUAL_TRANSLATIONS[languageCode] || [])].sort(
+    (left, right) => right[0].length - left[0].length
+  );
+  const localizedValue = residualPatterns.reduce(
+    (current, [source, target]) => replaceHardCodedPhrase(current, source, target),
+    value
+  );
+
+  return localizedValue.replace(/[A-Za-z][A-Za-z0-9+-]*/g, (token) =>
+    spellLatinToken(token, languageCode)
+  );
+}
+
+function resolveAppErrorMessage(error, fallbackMessage) {
+  if (error?.code === "API_UNREACHABLE") {
+    return "The deployed app could not reach its API. Make sure the backend routes are deployed correctly.";
+  }
+
+  if (error?.code === "API_HTML_RESPONSE") {
+    return "The API returned HTML instead of JSON. Check that the backend route is deployed correctly.";
+  }
+
+  if (error?.code === "API_FETCH_FAILED") {
+    return "Unable to reach the API right now. Please try again.";
+  }
+
+  if (error?.code === "API_INVALID_JSON") {
+    return "The server returned an invalid JSON response.";
+  }
+
+  return error?.message || fallbackMessage;
+}
 
 function translateText(value, languageCode) {
   if (languageCode === "en" || typeof value !== "string" || !value) {
     return value;
   }
 
-  const patterns = TRANSLATION_PATTERNS[languageCode] || [];
-  return patterns.reduce((current, [source, target]) => current.split(source).join(target), value);
+  const patterns = [...(HARD_CODED_TRANSLATIONS[languageCode] || [])].sort(
+    (left, right) => right[0].length - left[0].length
+  );
+
+  const translatedValue = patterns.reduce(
+    (current, [source, target]) => replaceHardCodedPhrase(current, source, target),
+    value
+  );
+
+  return localizeResidualLatinText(translatedValue, languageCode);
 }
 
 function translateContent(value, languageCode) {
@@ -1034,7 +1645,9 @@ function App() {
       } catch (loadError) {
         if (!cancelled) {
           setPriceReport(null);
-          setPriceReportError(loadError.message || "Unable to load crop price report.");
+          setPriceReportError(
+            resolveAppErrorMessage(loadError, "Unable to load crop price report.")
+          );
         }
       } finally {
         if (!cancelled) {
@@ -1082,7 +1695,9 @@ function App() {
       } catch (loadError) {
         if (!cancelled) {
           setSchemeInsights(null);
-          setSchemeInsightsError(loadError.message || "Unable to load government schemes.");
+          setSchemeInsightsError(
+            resolveAppErrorMessage(loadError, "Unable to load government schemes.")
+          );
         }
       } finally {
         if (!cancelled) {
@@ -1283,7 +1898,9 @@ function App() {
       setSite(sitePayload);
       setDashboard(dashboardPayload);
     } catch (loadError) {
-      setError(loadError.message || "Unable to load the AgriCure dashboard.");
+      setError(
+        resolveAppErrorMessage(loadError, "Unable to load the AgriCure dashboard.")
+      );
     } finally {
       setLoading(false);
     }
@@ -1312,7 +1929,9 @@ function App() {
       setChatMessages([]);
       await loadDashboard();
     } catch (languageError) {
-      setError(languageError.message || "Unable to update language preference.");
+      setError(
+        resolveAppErrorMessage(languageError, "Unable to update language preference.")
+      );
     } finally {
       setLanguageBusy(false);
     }
@@ -1341,7 +1960,7 @@ function App() {
         setSite(payload.siteData);
       }
     } catch (saveError) {
-      setError(saveError.message || "Unable to save profile.");
+      setError(resolveAppErrorMessage(saveError, "Unable to save profile."));
       throw saveError;
     } finally {
       setProfileSaving(false);
@@ -2542,7 +3161,7 @@ function SchemeInsightsPanel({
             <p className="text-xs font-semibold uppercase tracking-[0.24em] text-white/60">
               {translate("Source")}
             </p>
-            <h3 className="mt-3 font-display text-3xl font-bold">Vikaspedia</h3>
+            <h3 className="mt-3 font-display text-3xl font-bold">{translate("Vikaspedia")}</h3>
             <p className="mt-3 text-sm leading-7 text-white/80">
               {translate("Central farmer schemes are shown first. After you choose a state, the panel loads farmer-focused state schemes and insurance schemes for that state from Vikaspedia.")}
             </p>
@@ -2567,7 +3186,7 @@ function SchemeInsightsPanel({
           </div>
         ) : schemeInsightsError ? (
           <div className="rounded-[1.8rem] border border-rose-200 bg-rose-50 p-6 text-sm text-rose-700">
-            {schemeInsightsError}
+            {translate(schemeInsightsError)}
           </div>
         ) : (
           <div className="grid gap-6">
@@ -3032,7 +3651,7 @@ function PriceInsightPanel({
           </div>
         ) : priceReportError ? (
           <div className="rounded-[1.8rem] border border-rose-200 bg-rose-50 p-6 text-sm text-rose-700">
-            {priceReportError}
+            {translate(priceReportError)}
           </div>
         ) : (
           <div className="grid gap-6 xl:grid-cols-2">
@@ -4968,7 +5587,7 @@ function ChatWidget({
         </p>
         <div className="mt-2 flex items-center gap-3">
           <div className="grid h-10 w-10 place-items-center rounded-2xl bg-white/10">
-            <span className="text-lg">AI</span>
+            <span className="text-lg">{translate("AI")}</span>
           </div>
           <div>
             <p className="font-display text-lg font-bold">{uiText.launcherTitle}</p>

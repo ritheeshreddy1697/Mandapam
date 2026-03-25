@@ -234,9 +234,9 @@ const defaultSiteData = {
     "Comprehensive soil analysis and fertilizer recommendations powered by real-time data and ML",
   selectedLanguage: "en",
   languages: [
-    { code: "en", label: "English", sarvamCode: "en-IN" },
-    { code: "hi", label: "हिंदी", sarvamCode: "hi-IN" },
-    { code: "te", label: "తెలుగు", sarvamCode: "te-IN" }
+    { code: "en", label: "English" },
+    { code: "hi", label: "हिंदी" },
+    { code: "te", label: "తెలుగు" }
   ],
   profile: {
     name: "Test User",
