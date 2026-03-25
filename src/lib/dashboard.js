@@ -50,6 +50,28 @@ export function formatCurrency(value) {
   return `Rs ${new Intl.NumberFormat(getFormatLocale()).format(Math.round(toNumber(value)))}`;
 }
 
+function formatAgmarknetUnit(unit) {
+  const normalizedUnit = String(unit || "").toLowerCase();
+
+  if (!normalizedUnit) {
+    return "quintal";
+  }
+
+  if (normalizedUnit.includes("quintal")) {
+    return "quintal";
+  }
+
+  if (normalizedUnit.includes("kg")) {
+    return "kg";
+  }
+
+  if (normalizedUnit.includes("tonne")) {
+    return "tonne";
+  }
+
+  return String(unit).replace(/^rs\.?\//i, "").trim();
+}
+
 export function formatDateTime(value) {
   if (!value) {
     return "Unavailable";
@@ -158,6 +180,9 @@ export function getRecommendationContext(dashboard) {
   const soilData = dashboard?.overview?.soilData || [];
 
   return {
+    nitrogen: Number.parseFloat(extractNumericValue(soilData[0]?.value)),
+    phosphorus: Number.parseFloat(extractNumericValue(soilData[1]?.value)),
+    potassium: Number.parseFloat(extractNumericValue(soilData[2]?.value)),
     moisture: Number.parseFloat(
       extractNumericValue(dashboard?.realtime?.metrics?.[0]?.value || soilData[5]?.value)
     ),
@@ -187,6 +212,8 @@ export function calculateRangeFit(value, range) {
 
 function buildCropFitReason(profile, context) {
   const reasons = [];
+  const thresholdProfile =
+    CROP_THRESHOLD_PROFILES[profile.thresholdProfileKey] || CROP_THRESHOLD_PROFILES.default;
 
   if (calculateRangeFit(context.moisture, profile.moistureRange) >= 0.95) {
     reasons.push(`soil moisture ${formatNumber(context.moisture, 1)}% fits this crop well`);
@@ -206,6 +233,13 @@ function buildCropFitReason(profile, context) {
     reasons.push(`soil health ${formatNumber(context.score, 0)}% is strong enough for planning`);
   }
 
+  if (
+    calculateRangeFit(context.nitrogen, [0, thresholdProfile.nutrients.N.mediumMax]) >= 0.92 &&
+    calculateRangeFit(context.phosphorus, [0, thresholdProfile.nutrients.P.mediumMax]) >= 0.92
+  ) {
+    reasons.push("current N and P levels are close to this crop's target band");
+  }
+
   if (reasons.length === 0) {
     return `${profile.label} stays workable if you manage irrigation and fertilizer timing carefully.`;
   }
@@ -219,17 +253,33 @@ function buildCropRankings(dashboard) {
 
   return Object.entries(CROP_CATALOG)
     .map(([key, profile], index) => {
+      const thresholdProfile =
+        CROP_THRESHOLD_PROFILES[profile.thresholdProfileKey] || CROP_THRESHOLD_PROFILES.default;
       const moistureFit = calculateRangeFit(context.moisture, profile.moistureRange);
       const phFit = calculateRangeFit(context.ph, profile.phRange);
       const temperatureFit = calculateRangeFit(context.temperature, profile.temperatureRange);
       const conductivityFit = calculateRangeFit(context.conductivity, profile.conductivityRange);
+      const nitrogenFit = calculateRangeFit(context.nitrogen, [
+        0,
+        thresholdProfile.nutrients.N.mediumMax
+      ]);
+      const phosphorusFit = calculateRangeFit(context.phosphorus, [
+        0,
+        thresholdProfile.nutrients.P.mediumMax
+      ]);
+      const potassiumFit = calculateRangeFit(context.potassium, [
+        0,
+        thresholdProfile.nutrients.K.mediumMax
+      ]);
+      const nutrientFit = (nitrogenFit + phosphorusFit + potassiumFit) / 3;
       const healthFit = clamp(context.score / Math.max(profile.minHealthScore, 1), 0, 1.2);
       const fitScore =
-        moistureFit * 0.3 +
-        phFit * 0.24 +
-        temperatureFit * 0.2 +
-        conductivityFit * 0.11 +
-        healthFit * 0.15;
+        moistureFit * 0.24 +
+        phFit * 0.16 +
+        temperatureFit * 0.16 +
+        conductivityFit * 0.08 +
+        nutrientFit * 0.2 +
+        healthFit * 0.16;
 
       return {
         key,
@@ -255,7 +305,7 @@ export function buildPredictedCropSections(dashboard) {
   const rankings = buildCropRankings(dashboard);
 
   return {
-    cereals: rankings.filter((item) => item.family === "Cereal").slice(0, 2),
+    cereals: rankings.filter((item) => item.family !== "Vegetable").slice(0, 3),
     vegetable: rankings.find((item) => item.family === "Vegetable") || null
   };
 }
@@ -458,6 +508,7 @@ const BASE_CROP_PROGRAMS = {
     N: {
       low: {
         fertilizer: "Urea",
+        brandExamples: ["IFFCO Urea", "NFL Kisan Urea"],
         nutrientContent: "46% N",
         rate: [44, 54],
         price: [5, 6],
@@ -465,6 +516,7 @@ const BASE_CROP_PROGRAMS = {
       },
       optimal: {
         fertilizer: "Calcium Ammonium Nitrate (CAN)",
+        brandExamples: ["RCF CAN", "MFL CAN"],
         nutrientContent: "25 - 26% N",
         rate: [18, 24],
         price: [12, 15],
@@ -474,6 +526,7 @@ const BASE_CROP_PROGRAMS = {
     P: {
       low: {
         fertilizer: "DAP (Diammonium Phosphate)",
+        brandExamples: ["IFFCO DAP", "Jai Kisaan Navratna DAP"],
         nutrientContent: "46% P",
         rate: [18, 22],
         price: [22, 27],
@@ -481,6 +534,7 @@ const BASE_CROP_PROGRAMS = {
       },
       optimal: {
         fertilizer: "SSP (Single Super Phosphate)",
+        brandExamples: ["Coromandel Gromor SSP", "IPL SSP"],
         nutrientContent: "16% P",
         rate: [18, 24],
         price: [6, 8],
@@ -490,6 +544,7 @@ const BASE_CROP_PROGRAMS = {
     K: {
       low: {
         fertilizer: "MOP (Muriate of Potash / KCl)",
+        brandExamples: ["IPL MOP", "Coromandel MOP"],
         nutrientContent: "60% K",
         rate: [18, 24],
         price: [16, 20],
@@ -497,6 +552,7 @@ const BASE_CROP_PROGRAMS = {
       },
       optimal: {
         fertilizer: "MOP (Muriate of Potash / KCl)",
+        brandExamples: ["IPL MOP", "Coromandel MOP"],
         nutrientContent: "60% K",
         rate: [8, 14],
         price: [16, 20],
@@ -508,6 +564,7 @@ const BASE_CROP_PROGRAMS = {
     N: {
       low: {
         fertilizer: "Blood Meal",
+        brandExamples: ["Local certified blood meal brands"],
         nutrientContent: "10 - 12% N",
         rate: [8, 12],
         price: [80, 120],
@@ -515,6 +572,7 @@ const BASE_CROP_PROGRAMS = {
       },
       optimal: {
         fertilizer: "Neem Cake",
+        brandExamples: ["Godrej Agrovet Neem Cake", "Multiplex Neem Cake"],
         nutrientContent: "4 - 5% N",
         rate: [20, 30],
         price: [25, 35],
@@ -524,6 +582,7 @@ const BASE_CROP_PROGRAMS = {
     P: {
       low: {
         fertilizer: "Bone Meal",
+        brandExamples: ["Local certified bone meal brands"],
         nutrientContent: "15 - 25% P",
         rate: [12, 18],
         price: [40, 80],
@@ -531,6 +590,7 @@ const BASE_CROP_PROGRAMS = {
       },
       optimal: {
         fertilizer: "PROM (Phosphate Rich Organic Manure)",
+        brandExamples: ["IPL PROM", "state-certified PROM suppliers"],
         nutrientContent: "10 - 20% P",
         rate: [18, 24],
         price: [10, 20],
@@ -540,6 +600,7 @@ const BASE_CROP_PROGRAMS = {
     K: {
       low: {
         fertilizer: "Poultry Manure",
+        brandExamples: ["Local FCO-registered poultry manure brands"],
         nutrientContent: "2 - 3% nutrient support",
         rate: [120, 160],
         price: [6, 10],
@@ -547,6 +608,7 @@ const BASE_CROP_PROGRAMS = {
       },
       optimal: {
         fertilizer: "Compost",
+        brandExamples: ["IFFCO City Compost", "state-certified compost suppliers"],
         nutrientContent: "0.5 - 1% nutrient support",
         rate: [140, 200],
         price: [3, 6],
@@ -588,6 +650,7 @@ function buildCropSpecificRecommendationItem({
         1
       )}. Skip extra ${noInputLabel} ${nutrientMeta.label.toLowerCase()} fertilizer for now to avoid ${nutrientMeta.highWarning}.`,
       fertilizer: `No ${nutrientMeta.label.toLowerCase()} fertilizer now`,
+      brandExamples: [],
       nutrientContent: "Not required",
       priceRange: `${formatCurrency(0)} / kg`,
       applicationRate: "0 kg / acre",
@@ -624,6 +687,7 @@ function buildCropSpecificRecommendationItem({
       bandKey === "low" ? nutrientMeta.lowSupport : nutrientMeta.optimalSupport
     }.`,
     fertilizer: program.fertilizer,
+    brandExamples: program.brandExamples || [],
     nutrientContent: program.nutrientContent,
     priceRange: formatPriceRange(program.price),
     applicationRate: formatApplicationRate(scaledRate),
@@ -715,6 +779,7 @@ function buildCropProtectionPlan(selectedCrop, humidityValue, temperatureValue, 
         "Use label dose and local agronomist advice for severe field pressure."
       ],
       gallery: [],
+      products: [],
       note: "Protection guidance depends on the selected crop and current field conditions."
     };
   }
@@ -730,8 +795,16 @@ function buildCropProtectionPlan(selectedCrop, humidityValue, temperatureValue, 
   const protectionProfiles = {
     paddy: {
       effects: "blast, sheath blight, and leaf folder pressure",
-      pesticide: "Tricyclazole or Mancozeb",
-      insecticide: "Chlorantraniliprole or Imidacloprid",
+      pesticide: {
+        label: "Tricyclazole 75% WP or Mancozeb 75% WP",
+        brands: ["Beam", "Indofil M-45"],
+        useCase: "blast lesions, sheath infection, or fungal spotting"
+      },
+      insecticide: {
+        label: "Chlorantraniliprole 18.5% SC or Imidacloprid 17.8% SL",
+        brands: ["Coragen", "Confidor"],
+        useCase: "stem borer, leaf folder, or hopper activity"
+      },
       diseaseSymptoms: "blast lesions, sheath infection, or fungal spotting",
       insectSymptoms: "stem borer, leaf folder, or hopper activity",
       gallery: [
@@ -742,8 +815,16 @@ function buildCropProtectionPlan(selectedCrop, humidityValue, temperatureValue, 
     },
     wheat: {
       effects: "rust, leaf blight, and aphid flare-ups",
-      pesticide: "Propiconazole or Mancozeb",
-      insecticide: "Thiamethoxam or Lambda-cyhalothrin",
+      pesticide: {
+        label: "Propiconazole 25% EC or Mancozeb 75% WP",
+        brands: ["Tilt", "Indofil M-45"],
+        useCase: "rust pustules or spreading leaf blight"
+      },
+      insecticide: {
+        label: "Thiamethoxam 25% WG or Lambda-cyhalothrin 5% EC",
+        brands: ["Actara", "Karate"],
+        useCase: "aphids or armyworm patches"
+      },
       diseaseSymptoms: "rust pustules or spreading leaf blight",
       insectSymptoms: "aphids or armyworm patches",
       gallery: [
@@ -754,8 +835,16 @@ function buildCropProtectionPlan(selectedCrop, humidityValue, temperatureValue, 
     },
     corn: {
       effects: "leaf blight, downy mildew, and armyworm pressure",
-      pesticide: "Metalaxyl + Mancozeb",
-      insecticide: "Emamectin Benzoate or Spinosad",
+      pesticide: {
+        label: "Metalaxyl 8% + Mancozeb 64% WP",
+        brands: ["Ridomil Gold"],
+        useCase: "leaf blight streaks or mildew symptoms"
+      },
+      insecticide: {
+        label: "Emamectin Benzoate 5% SG or Spinosad 45% SC",
+        brands: ["Proclaim", "Tracer"],
+        useCase: "fall armyworm, stem borer, or chewing damage"
+      },
       diseaseSymptoms: "leaf blight streaks or mildew symptoms",
       insectSymptoms: "fall armyworm, stem borer, or chewing damage",
       gallery: [
@@ -766,8 +855,16 @@ function buildCropProtectionPlan(selectedCrop, humidityValue, temperatureValue, 
     },
     fruitingVegetable: {
       effects: "blight, fruit rot, and sucking-pest pressure",
-      pesticide: "Mancozeb or Copper Oxychloride",
-      insecticide: "Spinosad or Emamectin Benzoate",
+      pesticide: {
+        label: "Mancozeb 75% WP or Copper Oxychloride 50% WP",
+        brands: ["Indofil M-45", "Blitox"],
+        useCase: "leaf blight, fruit rot, or fungal spotting"
+      },
+      insecticide: {
+        label: "Spinosad 45% SC or Emamectin Benzoate 5% SG",
+        brands: ["Tracer", "Proclaim"],
+        useCase: "thrips, fruit borer, whitefly, or aphid activity"
+      },
       diseaseSymptoms: "leaf blight, fruit rot, or fungal spotting",
       insectSymptoms: "thrips, fruit borer, whitefly, or aphid activity",
       gallery: [
@@ -778,8 +875,16 @@ function buildCropProtectionPlan(selectedCrop, humidityValue, temperatureValue, 
     },
     rootVegetable: {
       effects: "leaf spot, crown rot, and leaf-miner pressure",
-      pesticide: "Metalaxyl + Mancozeb",
-      insecticide: "Imidacloprid or Spinosad",
+      pesticide: {
+        label: "Metalaxyl 8% + Mancozeb 64% WP",
+        brands: ["Ridomil Gold"],
+        useCase: "leaf spot, damping symptoms, or crown rot"
+      },
+      insecticide: {
+        label: "Imidacloprid 17.8% SL or Spinosad 45% SC",
+        brands: ["Confidor", "Tracer"],
+        useCase: "cutworm, leaf miner, or aphid activity"
+      },
       diseaseSymptoms: "leaf spot, damping symptoms, or crown rot",
       insectSymptoms: "cutworm, leaf miner, or aphid activity",
       gallery: [
@@ -790,8 +895,16 @@ function buildCropProtectionPlan(selectedCrop, humidityValue, temperatureValue, 
     },
     leafyVegetable: {
       effects: "downy mildew, leaf spot, and caterpillar pressure",
-      pesticide: "Copper Oxychloride or Mancozeb",
-      insecticide: "Spinosad or Thiamethoxam",
+      pesticide: {
+        label: "Copper Oxychloride 50% WP or Mancozeb 75% WP",
+        brands: ["Blitox", "Indofil M-45"],
+        useCase: "downy mildew patches or leaf spot spread"
+      },
+      insecticide: {
+        label: "Spinosad 45% SC or Thiamethoxam 25% WG",
+        brands: ["Tracer", "Actara"],
+        useCase: "aphids, caterpillars, or chewing damage"
+      },
       diseaseSymptoms: "downy mildew patches or leaf spot spread",
       insectSymptoms: "aphids, caterpillars, or chewing damage",
       gallery: [
@@ -818,6 +931,20 @@ function buildCropProtectionPlan(selectedCrop, humidityValue, temperatureValue, 
   const moistureNote = dryState
     ? "Low soil moisture can also push stress symptoms that look like pest damage."
     : "Current root-zone moisture is not the main stress trigger right now.";
+  const products = [
+    {
+      type: "Pesticide",
+      title: protectionProfile.pesticide.label,
+      brands: protectionProfile.pesticide.brands,
+      useCase: protectionProfile.pesticide.useCase
+    },
+    {
+      type: "Insecticide",
+      title: protectionProfile.insecticide.label,
+      brands: protectionProfile.insecticide.brands,
+      useCase: protectionProfile.insecticide.useCase
+    }
+  ];
 
   return {
     cards: [
@@ -829,23 +956,25 @@ function buildCropProtectionPlan(selectedCrop, humidityValue, temperatureValue, 
       },
       {
         eyebrow: "Recommended pesticide",
-        title: protectionProfile.pesticide,
-        description: `Use this path if ${cropLabel} shows ${protectionProfile.diseaseSymptoms}. Focus on preventive or early-curative coverage and avoid spraying in peak afternoon heat.`,
+        title: protectionProfile.pesticide.label,
+        description: `Use this path if ${cropLabel} shows ${protectionProfile.diseaseSymptoms}. Common brand examples: ${protectionProfile.pesticide.brands.join(", ")}.`,
         tone: "amber"
       },
       {
         eyebrow: "Recommended insecticide",
-        title: protectionProfile.insecticide,
-        description: `Use this route if scouting confirms ${protectionProfile.insectSymptoms} on ${cropLabel}. Target affected blocks first instead of blanket spraying the whole field.`,
+        title: protectionProfile.insecticide.label,
+        description: `Use this route if scouting confirms ${protectionProfile.insectSymptoms} on ${cropLabel}. Common brand examples: ${protectionProfile.insecticide.brands.join(", ")}.`,
         tone: "emerald"
       }
     ],
     checklist: [
       `Scout ${cropLabel} for actual symptoms before selecting a spray program.`,
       "Spray in the early morning or late evening to reduce drift and evaporation.",
-      "Rotate chemistry groups and stay within label dose to avoid resistance pressure."
+      "Rotate chemistry groups and stay within label dose to avoid resistance pressure.",
+      "Use the PPQS advisory links below as the official reference before finalizing any crop protection spray."
     ],
     gallery: protectionProfile.gallery || [],
+    products,
     note: `This protection view is tuned for ${cropLabel} using the current humidity, temperature, and soil moisture context.`
   };
 }
@@ -1182,10 +1311,11 @@ export function buildEnvironmentSegments(cardSets, uiText) {
   ];
 }
 
-export function buildToolWorkspaceModel(toolKey, site, dashboard, selectedCropKey) {
+export function buildToolWorkspaceModel(toolKey, site, dashboard, selectedCropKey, marketInsights = {}) {
   const tools = site?.uiText?.recommendationWorkspace?.tools || [];
   const tool = tools.find((item) => item.key === toolKey);
   const selectedCrop = getCropProfile(selectedCropKey);
+  const selectedCropInsight = selectedCropKey ? marketInsights[selectedCropKey] : null;
   const cropSpecificRecommendations = buildCropSpecificRecommendations(
     dashboard,
     selectedCropKey
@@ -1304,6 +1434,7 @@ export function buildToolWorkspaceModel(toolKey, site, dashboard, selectedCropKe
           : tool.description,
         mode: "dynamic",
         gallery: protectionPlan.gallery,
+        products: protectionPlan.products,
         cards: protectionPlan.cards,
         checklistTitle: selectedCrop
           ? `Protection checklist for ${selectedCrop.label}`
@@ -1322,7 +1453,9 @@ export function buildToolWorkspaceModel(toolKey, site, dashboard, selectedCropKe
             eyebrow: "Market focus",
             title: selectedCrop ? `${selectedCrop.label} planning` : "Paddy planning",
             description: selectedCrop
-              ? `Market reference is ${formatCurrency(selectedCrop.marketPrice)} ${selectedCrop.marketUnit}.`
+              ? selectedCropInsight
+                ? `Agmarknet reference is ${formatCurrency(selectedCropInsight.latestPrice)} / ${formatAgmarknetUnit(selectedCropInsight.priceUnit)} from ${selectedCropInsight.marketName}, ${selectedCropInsight.stateName}.`
+                : `Market reference is ${formatCurrency(selectedCrop.marketPrice)} ${selectedCrop.marketUnit}.`
               : "Balanced soil chemistry can support a cereal crop with moderate input discipline.",
             tone: "violet"
           },
@@ -1346,7 +1479,9 @@ export function buildToolWorkspaceModel(toolKey, site, dashboard, selectedCropKe
           "Use crop suitability and cost structure together, not price alone.",
           "Recheck after the next soil and sensor update."
         ],
-        note: "This is a planning-oriented outlook, not a live mandi price feed."
+        note: selectedCropInsight
+          ? `Reference price pulled from Agmarknet using ${selectedCropInsight.marketName}, ${selectedCropInsight.stateName} on ${selectedCropInsight.lastReportedDate}.`
+          : "This is a planning-oriented outlook, not a live mandi price feed."
       };
     case "seed":
       return {

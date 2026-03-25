@@ -6,6 +6,15 @@ export const PRIMARY_CROP_OPTIONS = [
   { key: "sorghum", label: "Sorghum" },
   { key: "millet", label: "Millet" },
   { key: "oats", label: "Oats" },
+  { key: "chickpea", label: "Chickpea" },
+  { key: "black-gram", label: "Black Gram" },
+  { key: "green-gram", label: "Green Gram" },
+  { key: "groundnut", label: "Groundnut" },
+  { key: "soybean", label: "Soybean" },
+  { key: "mustard", label: "Mustard" },
+  { key: "sunflower", label: "Sunflower" },
+  { key: "cotton", label: "Cotton" },
+  { key: "turmeric", label: "Turmeric" },
   { key: "vegetables", label: "Vegetables" }
 ];
 
@@ -118,6 +127,123 @@ export const CROP_CATALOG = {
     temperatureRange: [12, 24],
     conductivityRange: [85, 240],
     minHealthScore: 47
+  },
+  chickpea: {
+    label: "Chickpea",
+    family: "Pulse",
+    thresholdProfileKey: "pulse",
+    estimatedGrowCost: 24000,
+    marketPrice: 6200,
+    marketUnit: "per quintal",
+    moistureRange: [14, 24],
+    phRange: [6.0, 8.0],
+    temperatureRange: [18, 30],
+    conductivityRange: [80, 220],
+    minHealthScore: 46
+  },
+  "black-gram": {
+    label: "Black Gram",
+    family: "Pulse",
+    thresholdProfileKey: "pulse",
+    estimatedGrowCost: 26000,
+    marketPrice: 7600,
+    marketUnit: "per quintal",
+    moistureRange: [16, 26],
+    phRange: [6.0, 7.8],
+    temperatureRange: [22, 32],
+    conductivityRange: [80, 220],
+    minHealthScore: 48
+  },
+  "green-gram": {
+    label: "Green Gram",
+    family: "Pulse",
+    thresholdProfileKey: "pulse",
+    estimatedGrowCost: 25000,
+    marketPrice: 7800,
+    marketUnit: "per quintal",
+    moistureRange: [16, 26],
+    phRange: [6.0, 7.8],
+    temperatureRange: [22, 32],
+    conductivityRange: [80, 220],
+    minHealthScore: 48
+  },
+  groundnut: {
+    label: "Groundnut",
+    family: "Oilseed",
+    thresholdProfileKey: "oilseed",
+    estimatedGrowCost: 30000,
+    marketPrice: 5600,
+    marketUnit: "per quintal",
+    moistureRange: [16, 26],
+    phRange: [5.8, 7.4],
+    temperatureRange: [22, 32],
+    conductivityRange: [85, 230],
+    minHealthScore: 48
+  },
+  soybean: {
+    label: "Soybean",
+    family: "Oilseed",
+    thresholdProfileKey: "oilseed",
+    estimatedGrowCost: 28000,
+    marketPrice: 4300,
+    marketUnit: "per quintal",
+    moistureRange: [18, 28],
+    phRange: [6.0, 7.5],
+    temperatureRange: [20, 32],
+    conductivityRange: [85, 230],
+    minHealthScore: 48
+  },
+  mustard: {
+    label: "Mustard",
+    family: "Oilseed",
+    thresholdProfileKey: "oilseed",
+    estimatedGrowCost: 23000,
+    marketPrice: 5200,
+    marketUnit: "per quintal",
+    moistureRange: [14, 24],
+    phRange: [6.0, 7.8],
+    temperatureRange: [16, 28],
+    conductivityRange: [80, 220],
+    minHealthScore: 46
+  },
+  sunflower: {
+    label: "Sunflower",
+    family: "Oilseed",
+    thresholdProfileKey: "oilseed",
+    estimatedGrowCost: 26000,
+    marketPrice: 5000,
+    marketUnit: "per quintal",
+    moistureRange: [16, 26],
+    phRange: [6.0, 7.5],
+    temperatureRange: [20, 32],
+    conductivityRange: [85, 230],
+    minHealthScore: 47
+  },
+  cotton: {
+    label: "Cotton",
+    family: "Fiber",
+    thresholdProfileKey: "fiber",
+    estimatedGrowCost: 34000,
+    marketPrice: 7200,
+    marketUnit: "per quintal",
+    moistureRange: [16, 28],
+    phRange: [5.8, 8.0],
+    temperatureRange: [22, 34],
+    conductivityRange: [90, 250],
+    minHealthScore: 50
+  },
+  turmeric: {
+    label: "Turmeric",
+    family: "Spice",
+    thresholdProfileKey: "spice",
+    estimatedGrowCost: 62000,
+    marketPrice: 8800,
+    marketUnit: "per quintal",
+    moistureRange: [20, 32],
+    phRange: [5.8, 7.5],
+    temperatureRange: [20, 32],
+    conductivityRange: [90, 240],
+    minHealthScore: 54
   },
   tomato: {
     label: "Tomato",
@@ -379,6 +505,42 @@ export const CROP_THRESHOLD_PROFILES = {
     },
     ph: { min: 6.0, max: 7.3, warningBuffer: 0.4 },
     ec: { min: 85, max: 220, warningBuffer: 35 }
+  },
+  pulse: {
+    nutrients: {
+      N: { lowMax: 14, mediumMax: 30 },
+      P: { lowMax: 18, mediumMax: 36 },
+      K: { lowMax: 75, mediumMax: 150 }
+    },
+    ph: { min: 6.0, max: 7.8, warningBuffer: 0.4 },
+    ec: { min: 80, max: 220, warningBuffer: 35 }
+  },
+  oilseed: {
+    nutrients: {
+      N: { lowMax: 18, mediumMax: 36 },
+      P: { lowMax: 18, mediumMax: 34 },
+      K: { lowMax: 80, mediumMax: 165 }
+    },
+    ph: { min: 5.8, max: 7.6, warningBuffer: 0.4 },
+    ec: { min: 85, max: 230, warningBuffer: 35 }
+  },
+  fiber: {
+    nutrients: {
+      N: { lowMax: 20, mediumMax: 44 },
+      P: { lowMax: 18, mediumMax: 34 },
+      K: { lowMax: 90, mediumMax: 180 }
+    },
+    ph: { min: 5.8, max: 7.8, warningBuffer: 0.4 },
+    ec: { min: 90, max: 245, warningBuffer: 35 }
+  },
+  spice: {
+    nutrients: {
+      N: { lowMax: 24, mediumMax: 50 },
+      P: { lowMax: 20, mediumMax: 40 },
+      K: { lowMax: 110, mediumMax: 220 }
+    },
+    ph: { min: 5.8, max: 7.4, warningBuffer: 0.4 },
+    ec: { min: 90, max: 240, warningBuffer: 35 }
   }
 };
 

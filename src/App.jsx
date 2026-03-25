@@ -59,7 +59,7 @@ const ACTION_PLANNER_OPTIONS = [
 const FALLBACK_UI_TEXT = {
   welcomePrefix: "Welcome,",
   farmProfileLabel: "Farm Profile",
-  manageAccountLabel: "Manage account",
+  manageAccountLabel: "Profile",
   recommendationTableTitle: "Nutrient Table",
   recommendationTableHeaders: {
     nutrient: "Nutrient",
@@ -635,7 +635,88 @@ function normalizePathname(pathname) {
     return "/sensor-data";
   }
 
+  if (normalized === "/profile") {
+    return "/profile";
+  }
+
   return "/";
+}
+
+function buildAgmarknetUnitLabel(unit) {
+  const normalizedUnit = String(unit || "").toLowerCase();
+
+  if (!normalizedUnit) {
+    return "/ quintal";
+  }
+
+  if (normalizedUnit.includes("quintal")) {
+    return "/ quintal";
+  }
+
+  if (normalizedUnit.includes("kg")) {
+    return "/ kg";
+  }
+
+  if (normalizedUnit.includes("tonne")) {
+    return "/ tonne";
+  }
+
+  return `/ ${String(unit).replace(/^rs\.?\//i, "").trim()}`;
+}
+
+function mergeCropMarketInsight(crop, insight) {
+  if (!crop) {
+    return crop;
+  }
+
+  if (!insight) {
+    return {
+      ...crop,
+      marketSource: null
+    };
+  }
+
+  return {
+    ...crop,
+    marketPrice: insight.latestPrice,
+    marketUnit: buildAgmarknetUnitLabel(insight.priceUnit),
+    marketSource: {
+      marketName: insight.marketName,
+      stateName: insight.stateName,
+      lastReportedDate: insight.lastReportedDate,
+      source: insight.source
+    }
+  };
+}
+
+function collectAgmarknetCropKeys(selectedCropKey, predictedCrops, predictedCropSections) {
+  return Array.from(
+    new Set(
+      [
+        selectedCropKey,
+        ...(predictedCrops || []).slice(0, 5).map((item) => item.key),
+        ...((predictedCropSections?.cereals || []).slice(0, 3).map((item) => item.key)),
+        predictedCropSections?.vegetable?.key
+      ].filter(Boolean)
+    )
+  );
+}
+
+function buildLocationKey(stateName, districtName) {
+  return `${String(stateName || "").trim()}::${String(districtName || "").trim()}`;
+}
+
+function getDistrictOptionsForState(states, stateName) {
+  const match = (states || []).find((state) => state.name === stateName);
+  return match?.districts || [];
+}
+
+function formatArrivals(arrivals, unit = "Metric Tonnes") {
+  if (arrivals === null || arrivals === undefined || arrivals === "") {
+    return "N/A";
+  }
+
+  return `${formatNumber(arrivals, 1)} ${unit}`;
 }
 
 function App() {
@@ -656,9 +737,24 @@ function App() {
   const [plannerSeedingDate, setPlannerSeedingDate] = useState("");
   const [plannerActionStatus, setPlannerActionStatus] = useState({});
   const [plannerReminders, setPlannerReminders] = useState([]);
+  const [marketInsights, setMarketInsights] = useState({});
+  const [marketInsightAttempts, setMarketInsightAttempts] = useState({});
+  const [agmarknetLocations, setAgmarknetLocations] = useState([]);
+  const [priceFilterState, setPriceFilterState] = useState("");
+  const [priceFilterDistrict, setPriceFilterDistrict] = useState("");
+  const [priceReport, setPriceReport] = useState(null);
+  const [priceReportLoading, setPriceReportLoading] = useState(false);
+  const [priceReportError, setPriceReportError] = useState("");
+  const [ppqsAdvisories, setPpqsAdvisories] = useState({});
+  const [schemeFilterState, setSchemeFilterState] = useState("");
+  const [schemeInsights, setSchemeInsights] = useState(null);
+  const [schemeInsightsLoading, setSchemeInsightsLoading] = useState(false);
+  const [schemeInsightsError, setSchemeInsightsError] = useState("");
+  const [profileSaving, setProfileSaving] = useState(false);
   const profileRef = useRef(null);
 
   const activeLanguage = site?.selectedLanguage || "en";
+  const profileLocationKey = buildLocationKey(site?.profile?.state, site?.profile?.district);
   const translate = (value) => translateText(value, activeLanguage);
   const uiText = translateContent(site?.uiText || FALLBACK_UI_TEXT, activeLanguage);
   const selectedCrop = getCropProfile(selectedCropKey);
@@ -671,18 +767,39 @@ function App() {
     ...item,
     label: translate(item.label)
   }));
-  const predictedCrops = dashboard
-    ? buildPredictedCropSuggestions(dashboard).map((item) => ({
-        ...item,
-        label: translate(item.label),
-        family: translate(item.family),
-        marketUnit: translate(item.marketUnit),
-        reason: translate(item.reason)
-      }))
-    : [];
-  const predictedCropSections = dashboard
-    ? translateContent(buildPredictedCropSections(dashboard), activeLanguage)
+  const basePredictedCrops = dashboard ? buildPredictedCropSuggestions(dashboard) : [];
+  const basePredictedCropSections = dashboard
+    ? buildPredictedCropSections(dashboard)
     : { cereals: [], vegetable: null };
+  const agmarknetCropKeys = collectAgmarknetCropKeys(
+    selectedCropKey,
+    basePredictedCrops,
+    basePredictedCropSections
+  );
+  const predictedCrops = basePredictedCrops
+    .map((item) => mergeCropMarketInsight(item, marketInsights[item.key]))
+    .map((item) => ({
+      ...item,
+      label: translate(item.label),
+      family: translate(item.family),
+      marketUnit: translate(item.marketUnit),
+      reason: translate(item.reason)
+    }));
+  const predictedCropSections = translateContent(
+    {
+      cereals: basePredictedCropSections.cereals.map((item) =>
+        mergeCropMarketInsight(item, marketInsights[item.key])
+      ),
+      vegetable: mergeCropMarketInsight(
+        basePredictedCropSections.vegetable,
+        marketInsights[basePredictedCropSections.vegetable?.key]
+      )
+    },
+    activeLanguage
+  );
+  const selectedCropInsight = selectedCropKey ? marketInsights[selectedCropKey] : null;
+  const selectedCropAdvisories = selectedCropKey ? ppqsAdvisories[selectedCropKey] : null;
+  const priceDistrictOptions = getDistrictOptionsForState(agmarknetLocations, priceFilterState);
   const weatherSnapshot = dashboard
     ? translateContent(buildWeatherSnapshot(dashboard, uiText), activeLanguage)
     : [];
@@ -690,7 +807,16 @@ function App() {
     ? translateContent(buildWeatherTrendSeries(dashboard, uiText, weatherRange), activeLanguage)
     : null;
   const toolModel = dashboard
-    ? translateContent(buildToolWorkspaceModel(activeToolKey, site, dashboard, selectedCropKey), activeLanguage)
+    ? translateContent(
+        buildToolWorkspaceModel(
+          activeToolKey,
+          site,
+          dashboard,
+          selectedCropKey,
+          marketInsights
+        ),
+        activeLanguage
+      )
     : null;
   const cropSpecificRows = translateContent(
     buildCropSpecificTableRows(dashboard?.recommendations?.tableRows || [], selectedCropKey, uiText),
@@ -728,6 +854,255 @@ function App() {
   }, []);
 
   useEffect(() => {
+    let cancelled = false;
+
+    async function loadLocations() {
+      try {
+        const response = await fetch("/api/agmarknet/locations");
+        const payload = await response.json();
+
+        if (!response.ok || cancelled) {
+          return;
+        }
+
+        setAgmarknetLocations(payload.states || []);
+      } catch {
+        // Keep location selectors empty if the lookup request fails.
+      }
+    }
+
+    loadLocations();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    setMarketInsights({});
+    setMarketInsightAttempts({});
+  }, [profileLocationKey]);
+
+  useEffect(() => {
+    setPriceFilterState(site?.profile?.state || "");
+    setPriceFilterDistrict(site?.profile?.district || "");
+    setSchemeFilterState(site?.profile?.state || "");
+  }, [site?.profile?.state, site?.profile?.district]);
+
+  useEffect(() => {
+    if (
+      priceFilterDistrict &&
+      !priceDistrictOptions.some((district) => district.name === priceFilterDistrict)
+    ) {
+      setPriceFilterDistrict("");
+    }
+  }, [priceDistrictOptions, priceFilterDistrict]);
+
+  useEffect(() => {
+    const missingCropKeys = agmarknetCropKeys.filter(
+      (cropKey) => !marketInsights[cropKey] && !marketInsightAttempts[cropKey]
+    );
+
+    if (missingCropKeys.length === 0) {
+      return;
+    }
+
+    let cancelled = false;
+
+    async function loadAgmarknetPrices() {
+      try {
+        const response = await fetch("/api/agmarknet/prices", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            cropKeys: missingCropKeys,
+            stateName: site?.profile?.state || "",
+            districtName: site?.profile?.district || ""
+          })
+        });
+        const payload = await response.json();
+
+        if (!response.ok || cancelled) {
+          return;
+        }
+
+        setMarketInsights((current) => ({
+          ...current,
+          ...(payload.insights || {})
+        }));
+      } catch {
+        // Ignore Agmarknet issues and keep the static fallback prices in place.
+      } finally {
+        if (!cancelled) {
+          setMarketInsightAttempts((current) => {
+            const nextState = { ...current };
+            missingCropKeys.forEach((cropKey) => {
+              nextState[cropKey] = true;
+            });
+            return nextState;
+          });
+        }
+      }
+    }
+
+    loadAgmarknetPrices();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    agmarknetCropKeys,
+    marketInsightAttempts,
+    marketInsights,
+    site?.profile?.district,
+    site?.profile?.state
+  ]);
+
+  useEffect(() => {
+    if (!selectedCropKey || ppqsAdvisories[selectedCropKey]) {
+      return;
+    }
+
+    let cancelled = false;
+
+    async function loadPpqsAdvisories() {
+      try {
+        const response = await fetch("/api/ppqs/advisories", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            cropKey: selectedCropKey
+          })
+        });
+        const payload = await response.json();
+
+        if (!response.ok || cancelled) {
+          return;
+        }
+
+        setPpqsAdvisories((current) => ({
+          ...current,
+          [selectedCropKey]: payload
+        }));
+      } catch {
+        // Keep the protection panel usable even if PPQS is temporarily unavailable.
+      }
+    }
+
+    loadPpqsAdvisories();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [ppqsAdvisories, selectedCropKey]);
+
+  useEffect(() => {
+    if (activeToolKey !== "price" || !selectedCropKey || !priceFilterState) {
+      setPriceReport(null);
+      setPriceReportError("");
+      return;
+    }
+
+    let cancelled = false;
+
+    async function loadPriceReport() {
+      setPriceReportLoading(true);
+      setPriceReportError("");
+
+      try {
+        const response = await fetch("/api/agmarknet/report", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            cropKey: selectedCropKey,
+            stateName: priceFilterState,
+            districtName: priceFilterDistrict
+          })
+        });
+        const payload = await response.json();
+
+        if (!response.ok) {
+          throw new Error(payload.error || "Unable to load crop price report.");
+        }
+
+        if (!cancelled) {
+          setPriceReport(payload.report || null);
+        }
+      } catch (loadError) {
+        if (!cancelled) {
+          setPriceReport(null);
+          setPriceReportError(loadError.message || "Unable to load crop price report.");
+        }
+      } finally {
+        if (!cancelled) {
+          setPriceReportLoading(false);
+        }
+      }
+    }
+
+    loadPriceReport();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [activeToolKey, priceFilterDistrict, priceFilterState, selectedCropKey]);
+
+  useEffect(() => {
+    if (activeToolKey !== "schemes") {
+      return;
+    }
+
+    let cancelled = false;
+
+    async function loadSchemeInsights() {
+      setSchemeInsightsLoading(true);
+      setSchemeInsightsError("");
+
+      try {
+        const response = await fetch("/api/vikaspedia/schemes", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            stateName: schemeFilterState
+          })
+        });
+        const payload = await response.json();
+
+        if (!response.ok) {
+          throw new Error(payload.error || "Unable to load government schemes.");
+        }
+
+        if (!cancelled) {
+          setSchemeInsights(payload);
+        }
+      } catch (loadError) {
+        if (!cancelled) {
+          setSchemeInsights(null);
+          setSchemeInsightsError(loadError.message || "Unable to load government schemes.");
+        }
+      } finally {
+        if (!cancelled) {
+          setSchemeInsightsLoading(false);
+        }
+      }
+    }
+
+    loadSchemeInsights();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [activeToolKey, schemeFilterState]);
+
+  useEffect(() => {
     function handlePopState() {
       setPathname(normalizePathname(window.location.pathname));
       setProfileOpen(false);
@@ -746,6 +1121,9 @@ function App() {
 
   useEffect(() => {
     const pageTitle =
+      pathname === "/profile"
+        ? "Profile"
+        :
       pathname === "/action-planner"
         ? "Action Planner"
         : pathname === "/recommendations"
@@ -944,6 +1322,37 @@ function App() {
     }
   }
 
+  async function handleProfileSave(profilePatch) {
+    setProfileSaving(true);
+    setError("");
+
+    try {
+      const response = await fetch("/api/site-data", {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          profile: profilePatch
+        })
+      });
+      const payload = await response.json();
+
+      if (!response.ok) {
+        throw new Error(payload.error || "Unable to save profile.");
+      }
+
+      if (payload.siteData) {
+        setSite(payload.siteData);
+      }
+    } catch (saveError) {
+      setError(saveError.message || "Unable to save profile.");
+      throw saveError;
+    } finally {
+      setProfileSaving(false);
+    }
+  }
+
   async function handleChatSubmit(promptText) {
     const message = String(promptText || chatInput).trim();
 
@@ -1003,17 +1412,19 @@ function App() {
 
   function navigateTo(nextPath) {
     const normalizedPath = normalizePathname(nextPath);
+    setProfileOpen(false);
 
     if (normalizedPath === pathname) {
+      window.scrollTo({
+        top: 0,
+        left: 0,
+        behavior: "smooth"
+      });
       return;
     }
 
+    setPathname(normalizedPath);
     window.history.pushState({}, "", normalizedPath);
-    setProfileOpen(false);
-
-    startTransition(() => {
-      setPathname(normalizedPath);
-    });
   }
 
   function handlePrimaryCropChange(value) {
@@ -1156,9 +1567,26 @@ function App() {
                         <span className="text-slate-500">{translate("Role")}</span>
                         <span className="font-semibold text-slate-900">{translate(site.profile.role)}</span>
                       </div>
+                      {site.profile.landSize ? (
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-slate-500">{translate("Land size")}</span>
+                          <span className="font-semibold text-slate-900">{site.profile.landSize}</span>
+                        </div>
+                      ) : null}
+                      {site.profile.state ? (
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-slate-500">{translate("Location")}</span>
+                          <span className="font-semibold text-right text-slate-900">
+                            {site.profile.district
+                              ? `${site.profile.district}, ${site.profile.state}`
+                              : site.profile.state}
+                          </span>
+                        </div>
+                      ) : null}
                     </div>
                     <button
                       type="button"
+                      onClick={() => navigateTo("/profile")}
                       className="mt-4 w-full rounded-2xl bg-slate-950 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
                     >
                       {uiText.manageAccountLabel}
@@ -1169,7 +1597,7 @@ function App() {
             </div>
           </div>
 
-          <nav className="mt-3 grid grid-cols-4 gap-2 lg:hidden">
+          <nav className="mt-3 flex gap-2 overflow-x-auto pb-1 lg:hidden">
             {navItems.map((item) => (
               <NavLink
                 key={item.path}
@@ -1238,10 +1666,22 @@ function App() {
               activePrimaryValue={activePrimaryValue}
               selectedCrop={selectedCrop}
               selectedCropKey={selectedCropKey}
+              selectedCropInsight={selectedCropInsight}
+              selectedCropAdvisories={selectedCropAdvisories}
               predictedCrops={predictedCrops}
               activeToolKey={activeToolKey}
               cropSpecificRows={cropSpecificRows}
               toolModel={toolModel}
+              agmarknetLocations={agmarknetLocations}
+              priceFilterState={priceFilterState}
+              priceFilterDistrict={priceFilterDistrict}
+              priceReport={priceReport}
+              priceReportLoading={priceReportLoading}
+              priceReportError={priceReportError}
+              schemeFilterState={schemeFilterState}
+              schemeInsights={schemeInsights}
+              schemeInsightsLoading={schemeInsightsLoading}
+              schemeInsightsError={schemeInsightsError}
               onNavigate={navigateTo}
               translate={translate}
               onPrimaryCropChange={handlePrimaryCropChange}
@@ -1254,6 +1694,9 @@ function App() {
                 setActiveToolKey("fertilizer");
               }}
               onSelectTool={setActiveToolKey}
+              onPriceStateChange={setPriceFilterState}
+              onPriceDistrictChange={setPriceFilterDistrict}
+              onSchemeStateChange={setSchemeFilterState}
             />
           ) : null}
 
@@ -1265,6 +1708,17 @@ function App() {
               realtimeTrend={realtimeTrend}
               environmentSegments={environmentSegments}
               onNavigate={navigateTo}
+              translate={translate}
+            />
+          ) : null}
+
+          {pathname === "/profile" ? (
+            <ProfilePage
+              site={site}
+              agmarknetLocations={agmarknetLocations}
+              saving={profileSaving}
+              onNavigate={navigateTo}
+              onSaveProfile={handleProfileSave}
               translate={translate}
             />
           ) : null}
@@ -1460,16 +1914,31 @@ function RecommendationsPage({
   activePrimaryValue,
   selectedCrop,
   selectedCropKey,
+  selectedCropInsight,
+  selectedCropAdvisories,
   predictedCrops,
   activeToolKey,
   cropSpecificRows,
   toolModel,
+  agmarknetLocations,
+  priceFilterState,
+  priceFilterDistrict,
+  priceReport,
+  priceReportLoading,
+  priceReportError,
+  schemeFilterState,
+  schemeInsights,
+  schemeInsightsLoading,
+  schemeInsightsError,
   onNavigate,
   translate,
   onPrimaryCropChange,
   onVegetableCropChange,
   onSelectCrop,
-  onSelectTool
+  onSelectTool,
+  onPriceStateChange,
+  onPriceDistrictChange,
+  onSchemeStateChange
 }) {
   const topOrganic = cropRecommendations.organic[0];
   const topInorganic = cropRecommendations.inorganic[0];
@@ -1485,6 +1954,7 @@ function RecommendationsPage({
     cropRecommendations.inorganic,
     selectedCrop
   );
+  const priceDistrictOptions = getDistrictOptionsForState(agmarknetLocations, priceFilterState);
 
   return (
     <div className="page-transition grid gap-8">
@@ -1646,10 +2116,25 @@ function RecommendationsPage({
                   />
                   <StatTile
                     label={cropUi.marketPriceLabel}
-                    value={`${formatCurrency(selectedCrop.marketPrice)} ${translate(selectedCrop.marketUnit)}`}
+                    value={`${
+                      selectedCropInsight
+                        ? formatCurrency(selectedCropInsight.latestPrice)
+                        : formatCurrency(selectedCrop.marketPrice)
+                    } ${
+                      selectedCropInsight
+                        ? translate(buildAgmarknetUnitLabel(selectedCropInsight.priceUnit))
+                        : translate(selectedCrop.marketUnit)
+                    }`}
                     dark
                   />
                 </div>
+                {selectedCropInsight ? (
+                  <p className="mt-4 text-sm text-white/72">
+                    {`Agmarknet • ${selectedCropInsight.marketName}, ${
+                      selectedCropInsight.stateName
+                    } • ${formatDateLong(selectedCropInsight.lastReportedDate)}`}
+                  </p>
+                ) : null}
               </div>
 
               <div className="grid gap-3">
@@ -1890,6 +2375,32 @@ function RecommendationsPage({
               </div>
             </SurfaceCard>
           </div>
+        ) : activeToolKey === "price" ? (
+          <PriceInsightPanel
+            toolModel={toolModel}
+            selectedCrop={selectedCrop}
+            agmarknetLocations={agmarknetLocations}
+            priceFilterState={priceFilterState}
+            priceFilterDistrict={priceFilterDistrict}
+            priceDistrictOptions={priceDistrictOptions}
+            priceReport={priceReport}
+            priceReportLoading={priceReportLoading}
+            priceReportError={priceReportError}
+            onPriceStateChange={onPriceStateChange}
+            onPriceDistrictChange={onPriceDistrictChange}
+            translate={translate}
+          />
+        ) : activeToolKey === "schemes" ? (
+          <SchemeInsightsPanel
+            toolModel={toolModel}
+            agmarknetLocations={agmarknetLocations}
+            schemeFilterState={schemeFilterState}
+            schemeInsights={schemeInsights}
+            schemeInsightsLoading={schemeInsightsLoading}
+            schemeInsightsError={schemeInsightsError}
+            onSchemeStateChange={onSchemeStateChange}
+            translate={translate}
+          />
         ) : (
           <SurfaceCard
             eyebrow={toolModel.badge}
@@ -1926,6 +2437,19 @@ function RecommendationsPage({
                 ))}
               </div>
 
+              {activeToolKey === "pesticide" ? (
+                <div className="grid gap-5 lg:grid-cols-[1.1fr_0.9fr]">
+                  <ProtectionProductPanel
+                    products={toolModel.products || []}
+                    translate={translate}
+                  />
+                  <PpqsAdvisoryPanel
+                    advisoryBundle={selectedCropAdvisories}
+                    translate={translate}
+                  />
+                </div>
+              ) : null}
+
               <div className="grid gap-5">
                 <article className="rounded-[1.9rem] border border-slate-200 bg-white p-5">
                   <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">
@@ -1955,6 +2479,768 @@ function RecommendationsPage({
           </SurfaceCard>
         )
       ) : null}
+    </div>
+  );
+}
+
+function SchemeInsightsPanel({
+  toolModel,
+  agmarknetLocations,
+  schemeFilterState,
+  schemeInsights,
+  schemeInsightsLoading,
+  schemeInsightsError,
+  onSchemeStateChange,
+  translate = (value) => value
+}) {
+  const centralSchemes = schemeInsights?.centralSchemes || [];
+  const stateSchemes = schemeInsights?.stateSchemes || [];
+  const insuranceCentral = schemeInsights?.insuranceSchemes?.central || [];
+  const insuranceState = schemeInsights?.insuranceSchemes?.state || [];
+
+  return (
+    <SurfaceCard
+      eyebrow={toolModel.badge}
+      title={toolModel.title}
+      subtitle={toolModel.subtitle}
+      elevated
+    >
+      <div className="grid gap-6">
+        <div className="grid gap-4 lg:grid-cols-[0.95fr_1.05fr]">
+          <article className="rounded-[1.9rem] border border-slate-200 bg-white p-5">
+            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">
+              {translate("State filters")}
+            </p>
+            <div className="mt-4 grid gap-4">
+              <label className="grid gap-2 text-sm">
+                <span className="font-semibold text-slate-700">{translate("Select state")}</span>
+                <select
+                  value={schemeFilterState}
+                  onChange={(event) => onSchemeStateChange(event.target.value)}
+                  className="rounded-[1.3rem] border border-slate-200 bg-white px-4 py-3 font-semibold text-slate-900 outline-none"
+                >
+                  <option value="">{translate("Choose state")}</option>
+                  {agmarknetLocations.map((state) => (
+                    <option key={state.id || state.name} value={state.name}>
+                      {state.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+            <div className="mt-5 grid gap-3">
+              {toolModel.cards.map((card) => (
+                <div
+                  key={`${card.eyebrow}-${card.title}`}
+                  className={`rounded-[1.5rem] border ${toneBorder(card.tone)} ${toneSurface(card.tone)} p-4`}
+                >
+                  <p className={`text-xs font-semibold uppercase tracking-[0.24em] ${toneText(card.tone)}`}>
+                    {card.eyebrow}
+                  </p>
+                  <h3 className="mt-2 font-display text-xl font-bold text-slate-950">{card.title}</h3>
+                  <p className="mt-2 text-sm leading-7 text-slate-600">{card.description}</p>
+                </div>
+              ))}
+            </div>
+          </article>
+
+          <article className="rounded-[1.9rem] bg-slate-950 p-5 text-white">
+            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-white/60">
+              {translate("Source")}
+            </p>
+            <h3 className="mt-3 font-display text-3xl font-bold">Vikaspedia</h3>
+            <p className="mt-3 text-sm leading-7 text-white/80">
+              {translate("Central farmer schemes are shown first. After you choose a state, the panel loads farmer-focused state schemes and insurance schemes for that state from Vikaspedia.")}
+            </p>
+            <div className="mt-5 grid gap-3 sm:grid-cols-2">
+              <MiniStat
+                label={translate("Central schemes")}
+                value={String(centralSchemes.length)}
+                dark
+              />
+              <MiniStat
+                label={translate("Selected state")}
+                value={schemeFilterState || translate("Choose state")}
+                dark
+              />
+            </div>
+          </article>
+        </div>
+
+        {schemeInsightsLoading ? (
+          <div className="rounded-[1.8rem] border border-slate-200 bg-white p-6 text-sm text-slate-600">
+            {translate("Loading government schemes from Vikaspedia...")}
+          </div>
+        ) : schemeInsightsError ? (
+          <div className="rounded-[1.8rem] border border-rose-200 bg-rose-50 p-6 text-sm text-rose-700">
+            {schemeInsightsError}
+          </div>
+        ) : (
+          <div className="grid gap-6">
+            <SchemeSection
+              eyebrow={translate("Central schemes")}
+              title={translate("Central farmer support schemes")}
+              subtitle={translate("National farmer-focused schemes sourced from the Vikaspedia farmer schemes collection.")}
+              items={centralSchemes}
+              emptyMessage={translate("No central schemes were returned right now.")}
+              translate={translate}
+            />
+
+            <SchemeSection
+              eyebrow={translate("State schemes")}
+              title={
+                schemeFilterState
+                  ? `${schemeFilterState} ${translate("farmer schemes")}`
+                  : translate("Select a state for local schemes")
+              }
+              subtitle={
+                schemeFilterState
+                  ? `${translate("Farmer-relevant schemes matched for")} ${schemeFilterState}.`
+                  : translate("Choose a state to load the matching state-specific scheme details.")
+              }
+              items={stateSchemes}
+              emptyMessage={
+                schemeFilterState
+                  ? translate("No farmer-focused state schemes were matched for this selection yet.")
+                  : translate("Choose a state to load state-specific schemes.")
+              }
+              translate={translate}
+            />
+
+            <div className="grid gap-6 xl:grid-cols-2">
+              <SchemeSection
+                eyebrow={translate("Insurance")}
+                title={translate("Central insurance schemes")}
+                subtitle={translate("Insurance-related farmer schemes listed in the central Vikaspedia farmer collection.")}
+                items={insuranceCentral}
+                emptyMessage={translate("No central insurance schemes were returned right now.")}
+                translate={translate}
+              />
+              <SchemeSection
+                eyebrow={translate("Insurance")}
+                title={
+                  schemeFilterState
+                    ? `${schemeFilterState} ${translate("insurance schemes")}`
+                    : translate("Select a state for insurance schemes")
+                }
+                subtitle={
+                  schemeFilterState
+                    ? `${translate("Insurance schemes matched for")} ${schemeFilterState}.`
+                    : translate("Choose a state to load state insurance schemes.")
+                }
+                items={insuranceState}
+                emptyMessage={
+                  schemeFilterState
+                    ? translate("No state insurance scheme was matched for this selection yet.")
+                    : translate("Choose a state to load state insurance schemes.")
+                }
+                translate={translate}
+              />
+            </div>
+          </div>
+        )}
+      </div>
+    </SurfaceCard>
+  );
+}
+
+function SchemeSection({
+  eyebrow,
+  title,
+  subtitle,
+  items = [],
+  emptyMessage,
+  translate = (value) => value
+}) {
+  return (
+    <article className="rounded-[1.9rem] border border-slate-200 bg-white p-5">
+      <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">{eyebrow}</p>
+      <h3 className="mt-3 font-display text-2xl font-bold text-slate-950">{title}</h3>
+      <p className="mt-3 text-sm leading-7 text-slate-600">{subtitle}</p>
+      {items.length ? (
+        <div className="mt-5 grid gap-4">
+          {items.map((item, index) => (
+            <Reveal key={`${item.scope}-${item.title}-${index}`} delay={70 + index * 45}>
+              <SchemeCard item={item} translate={translate} />
+            </Reveal>
+          ))}
+        </div>
+      ) : (
+        <div className="mt-5 rounded-[1.4rem] border border-dashed border-slate-300 bg-slate-50 p-4 text-sm text-slate-600">
+          {emptyMessage}
+        </div>
+      )}
+    </article>
+  );
+}
+
+function SchemeCard({ item, translate = (value) => value }) {
+  return (
+    <article className="rounded-[1.6rem] border border-slate-100 bg-slate-50 p-4">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
+            {item.stateName ? `${item.stateName} • ` : ""}
+            {translate(formatSchemeScope(item.scope))}
+          </p>
+          <h4 className="mt-2 font-display text-xl font-bold text-slate-950">{item.title}</h4>
+        </div>
+        {item.updatedAt ? (
+          <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-slate-700">
+            {translate("Updated")} {formatDateLong(item.updatedAt)}
+          </span>
+        ) : null}
+      </div>
+
+      <p className="mt-3 text-sm leading-7 text-slate-600">{item.summary}</p>
+
+      {item.highlights?.length ? (
+        <div className="mt-4 grid gap-2">
+          {item.highlights.slice(0, 3).map((highlight) => (
+            <div
+              key={highlight}
+              className="flex gap-3 rounded-[1.2rem] bg-white px-4 py-3 text-sm text-slate-700"
+            >
+              <span className="mt-1 h-2.5 w-2.5 rounded-full bg-emerald-500" />
+              <span>{highlight}</span>
+            </div>
+          ))}
+        </div>
+      ) : null}
+
+      <div className="mt-4 flex flex-wrap gap-3">
+        <a
+          href={item.sourceUrl}
+          target="_blank"
+          rel="noreferrer"
+          className="rounded-full bg-slate-950 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800"
+        >
+          {translate("View Vikaspedia")}
+        </a>
+        {item.officialUrl ? (
+          <a
+            href={item.officialUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-emerald-200 hover:text-slate-950"
+          >
+            {translate("Official link")}
+          </a>
+        ) : null}
+      </div>
+    </article>
+  );
+}
+
+function formatSchemeScope(scope) {
+  switch (scope) {
+    case "central":
+      return "Central";
+    case "state":
+      return "State";
+    case "central-insurance":
+      return "Central insurance";
+    case "state-insurance":
+      return "State insurance";
+    default:
+      return "Scheme";
+  }
+}
+
+function ProtectionProductPanel({ products = [], translate = (value) => value }) {
+  if (!products.length) {
+    return null;
+  }
+
+  return (
+    <article className="rounded-[1.9rem] border border-slate-200 bg-white p-5">
+      <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">
+        {translate("Protection products")}
+      </p>
+      <div className="mt-4 grid gap-4">
+        {products.map((product) => (
+          <div
+            key={`${product.type}-${product.title}`}
+            className="rounded-[1.5rem] border border-slate-100 bg-slate-50 p-4"
+          >
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
+                  {translate(product.type)}
+                </p>
+                <h3 className="mt-2 font-display text-xl font-bold text-slate-950">
+                  {product.title}
+                </h3>
+              </div>
+            </div>
+            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              <MiniStat
+                label={translate("Brand examples")}
+                value={product.brands?.join(", ") || translate("Check local dealer")}
+              />
+              <MiniStat label={translate("Use when")} value={product.useCase} />
+            </div>
+          </div>
+        ))}
+      </div>
+    </article>
+  );
+}
+
+function PpqsAdvisoryPanel({ advisoryBundle, translate = (value) => value }) {
+  const advisories = advisoryBundle?.advisories || [];
+
+  return (
+    <article className="rounded-[1.9rem] border border-slate-200 bg-white p-5">
+      <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">
+        {translate("Official advisories")}
+      </p>
+      <h3 className="mt-3 font-display text-2xl font-bold text-slate-950">
+        {translate("PPQS references")}
+      </h3>
+      <p className="mt-3 text-sm leading-7 text-slate-600">
+        {translate("These links come from the Directorate of Plant Protection, Quarantine & Storage advisory section.")}
+      </p>
+      {advisories.length ? (
+        <div className="mt-5 grid gap-3">
+          {advisories.map((advisory) => (
+            <a
+              key={advisory.href}
+              href={advisory.href}
+              target="_blank"
+              rel="noreferrer"
+              className="rounded-[1.4rem] border border-slate-100 bg-slate-50 px-4 py-4 text-sm text-slate-700 transition hover:border-emerald-200 hover:bg-white"
+            >
+              <span className="block font-semibold text-slate-950">{advisory.title}</span>
+              <span className="mt-2 block text-xs uppercase tracking-[0.2em] text-slate-500">
+                PPQS Download
+              </span>
+            </a>
+          ))}
+        </div>
+      ) : (
+        <div className="mt-5 rounded-[1.4rem] border border-dashed border-slate-300 bg-slate-50 p-4 text-sm text-slate-600">
+          {translate("No crop-specific PPQS advisory was matched yet for this crop.")}
+        </div>
+      )}
+    </article>
+  );
+}
+
+function PriceReportCard({ title, report, translate = (value) => value }) {
+  if (!report) {
+    return (
+      <article className="rounded-[1.8rem] border border-dashed border-slate-300 bg-slate-50 p-5 text-sm text-slate-600">
+        {translate("No Agmarknet report is available for this selection right now.")}
+      </article>
+    );
+  }
+
+  return (
+    <article className="rounded-[1.9rem] border border-slate-200 bg-white p-5">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">
+            {title}
+          </p>
+          <h3 className="mt-2 font-display text-2xl font-bold text-slate-950">
+            {report.districtName
+              ? `${report.districtName}, ${report.stateName}`
+              : report.stateName}
+          </h3>
+          <p className="mt-2 text-sm text-slate-600">
+            {translate("Latest report date")}: {formatDateLong(report.latestDate)}
+          </p>
+          {report.districtFallbackApplied ? (
+            <p className="mt-2 text-sm text-amber-700">
+              {translate("District-specific data was not found for the latest report, so the panel is showing the broader state report.")}
+            </p>
+          ) : null}
+        </div>
+        <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">
+          {translate("Agmarknet")}
+        </span>
+      </div>
+      <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <MiniStat
+          label={translate("Average modal price")}
+          value={
+            report.averageModalPrice !== null
+              ? `${formatCurrency(report.averageModalPrice)} ${buildAgmarknetUnitLabel(report.unitOfPrice)}`
+              : "N/A"
+          }
+        />
+        <MiniStat
+          label={translate("Price range")}
+          value={
+            report.minimumPrice !== null && report.maximumPrice !== null
+              ? `${formatCurrency(report.minimumPrice)} - ${formatCurrency(report.maximumPrice)}`
+              : "N/A"
+          }
+        />
+        <MiniStat label={translate("Markets reporting")} value={String(report.marketsReporting)} />
+        <MiniStat
+          label={translate("Total arrivals")}
+          value={formatArrivals(report.totalArrivals, report.unitOfArrivals)}
+        />
+      </div>
+      <div className="mt-5 grid gap-3">
+        {report.rows.map((row) => (
+          <div
+            key={`${row.marketName}-${row.reportedOn}-${row.variety}`}
+            className="rounded-[1.4rem] bg-slate-50 px-4 py-4"
+          >
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <p className="font-semibold text-slate-950">{row.marketName}</p>
+                <p className="mt-1 text-sm text-slate-600">
+                  {row.districtName ? `${row.districtName} • ` : ""}
+                  {row.variety || translate("Market report")}
+                </p>
+              </div>
+              <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-slate-700">
+                {row.modalPrice !== null
+                  ? `${formatCurrency(row.modalPrice)} ${buildAgmarknetUnitLabel(report.unitOfPrice)}`
+                  : "N/A"}
+              </span>
+            </div>
+            <div className="mt-3 grid gap-3 sm:grid-cols-3">
+              <MiniStat
+                label={translate("Min / max")}
+                value={
+                  row.minimumPrice !== null && row.maximumPrice !== null
+                    ? `${formatCurrency(row.minimumPrice)} / ${formatCurrency(row.maximumPrice)}`
+                    : "N/A"
+                }
+              />
+              <MiniStat label={translate("Arrivals")} value={formatArrivals(row.arrivals)} />
+              <MiniStat label={translate("Reported")} value={formatDateLong(row.reportedOn)} />
+            </div>
+          </div>
+        ))}
+      </div>
+    </article>
+  );
+}
+
+function PriceInsightPanel({
+  toolModel,
+  selectedCrop,
+  agmarknetLocations,
+  priceFilterState,
+  priceFilterDistrict,
+  priceDistrictOptions,
+  priceReport,
+  priceReportLoading,
+  priceReportError,
+  onPriceStateChange,
+  onPriceDistrictChange,
+  translate = (value) => value
+}) {
+  return (
+    <SurfaceCard
+      eyebrow={toolModel.badge}
+      title={toolModel.title}
+      subtitle={toolModel.subtitle}
+      elevated
+    >
+      <div className="grid gap-6">
+        <div className="grid gap-4 lg:grid-cols-[0.95fr_1.05fr]">
+          <article className="rounded-[1.9rem] border border-slate-200 bg-white p-5">
+            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">
+              {translate("Location filters")}
+            </p>
+            <div className="mt-4 grid gap-4">
+              <label className="grid gap-2 text-sm">
+                <span className="font-semibold text-slate-700">{translate("Select state")}</span>
+                <select
+                  value={priceFilterState}
+                  onChange={(event) => {
+                    onPriceStateChange(event.target.value);
+                    onPriceDistrictChange("");
+                  }}
+                  className="rounded-[1.3rem] border border-slate-200 bg-white px-4 py-3 font-semibold text-slate-900 outline-none"
+                >
+                  <option value="">{translate("Choose state")}</option>
+                  {agmarknetLocations.map((state) => (
+                    <option key={state.id || state.name} value={state.name}>
+                      {state.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="grid gap-2 text-sm">
+                <span className="font-semibold text-slate-700">{translate("Select district")}</span>
+                <select
+                  value={priceFilterDistrict}
+                  onChange={(event) => onPriceDistrictChange(event.target.value)}
+                  disabled={!priceFilterState}
+                  className="rounded-[1.3rem] border border-slate-200 bg-white px-4 py-3 font-semibold text-slate-900 outline-none disabled:bg-slate-50 disabled:text-slate-400"
+                >
+                  <option value="">{translate("All districts in selected state")}</option>
+                  {priceDistrictOptions.map((district) => (
+                    <option key={district.id || district.name} value={district.name}>
+                      {district.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+            <div className="mt-5 grid gap-3">
+              {toolModel.cards.map((card) => (
+                <div
+                  key={`${card.eyebrow}-${card.title}`}
+                  className={`rounded-[1.5rem] border ${toneBorder(card.tone)} ${toneSurface(card.tone)} p-4`}
+                >
+                  <p className={`text-xs font-semibold uppercase tracking-[0.24em] ${toneText(card.tone)}`}>
+                    {card.eyebrow}
+                  </p>
+                  <h3 className="mt-2 font-display text-xl font-bold text-slate-950">{card.title}</h3>
+                  <p className="mt-2 text-sm leading-7 text-slate-600">{card.description}</p>
+                </div>
+              ))}
+            </div>
+          </article>
+
+          <article className="rounded-[1.9rem] bg-slate-950 p-5 text-white">
+            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-white/60">
+              {translate("Selected crop")}
+            </p>
+            <h3 className="mt-3 font-display text-3xl font-bold">
+              {translate(selectedCrop?.label || "Choose crop")}
+            </h3>
+            <p className="mt-3 text-sm leading-7 text-white/80">
+              {translate("Current prices and previous-year comparison are both pulled from Agmarknet for the selected crop and location.")}
+            </p>
+            <div className="mt-5 grid gap-3 sm:grid-cols-2">
+              <MiniStat
+                label={translate("State")}
+                value={priceFilterState || translate("Choose state")}
+                dark
+              />
+              <MiniStat
+                label={translate("District")}
+                value={priceFilterDistrict || translate("All districts")}
+                dark
+              />
+            </div>
+          </article>
+        </div>
+
+        {!priceFilterState ? (
+          <div className="rounded-[1.8rem] border border-dashed border-slate-300 bg-slate-50 p-6 text-sm text-slate-600">
+            {translate("Select a state to load the current crop price report and the same-month previous-year report from Agmarknet.")}
+          </div>
+        ) : priceReportLoading ? (
+          <div className="rounded-[1.8rem] border border-slate-200 bg-white p-6 text-sm text-slate-600">
+            {translate("Loading Agmarknet report for the selected crop and location...")}
+          </div>
+        ) : priceReportError ? (
+          <div className="rounded-[1.8rem] border border-rose-200 bg-rose-50 p-6 text-sm text-rose-700">
+            {priceReportError}
+          </div>
+        ) : (
+          <div className="grid gap-6 xl:grid-cols-2">
+            <PriceReportCard
+              title={translate("Current report")}
+              report={priceReport?.currentReport}
+              translate={translate}
+            />
+            <PriceReportCard
+              title={translate("Previous year report")}
+              report={priceReport?.previousYearReport}
+              translate={translate}
+            />
+          </div>
+        )}
+      </div>
+    </SurfaceCard>
+  );
+}
+
+function ProfilePage({
+  site,
+  agmarknetLocations,
+  saving,
+  onNavigate,
+  onSaveProfile,
+  translate = (value) => value
+}) {
+  const [formState, setFormState] = useState({
+    name: "",
+    landSize: "",
+    state: "",
+    district: ""
+  });
+  const [saveMessage, setSaveMessage] = useState("");
+  const districtOptions = getDistrictOptionsForState(agmarknetLocations, formState.state);
+
+  useEffect(() => {
+    setFormState({
+      name: site?.profile?.name || "",
+      landSize: site?.profile?.landSize || "",
+      state: site?.profile?.state || "",
+      district: site?.profile?.district || ""
+    });
+  }, [site?.profile?.district, site?.profile?.landSize, site?.profile?.name, site?.profile?.state]);
+
+  useEffect(() => {
+    if (formState.district && !districtOptions.some((district) => district.name === formState.district)) {
+      setFormState((current) => ({
+        ...current,
+        district: ""
+      }));
+    }
+  }, [districtOptions, formState.district]);
+
+  async function handleSubmit(event) {
+    event.preventDefault();
+    setSaveMessage("");
+    await onSaveProfile(formState);
+    setSaveMessage("Profile saved.");
+  }
+
+  return (
+    <div className="page-transition grid gap-8">
+      <PageHero
+        eyebrow={translate("Profile")}
+        title={
+          <>
+            {translate("Set the")}
+            <span className="bg-gradient-to-r from-slate-950 via-emerald-600 to-cyan-500 bg-clip-text text-transparent">
+              {` ${translate("farmer profile and market location")}`}
+            </span>
+            .
+          </>
+        }
+        description={translate("This profile drives the default Agmarknet state and district used in crop price insights across the app.")}
+        primaryAction={{
+          label: translate("Open Recommendations"),
+          onClick: () => onNavigate("/recommendations")
+        }}
+        secondaryAction={{
+          label: translate("Back to Overview"),
+          onClick: () => onNavigate("/")
+        }}
+        stats={[
+          {
+            label: translate("Farmer"),
+            value: site?.profile?.name || translate("Pending"),
+            detail: translate("Profile name")
+          },
+          {
+            label: translate("Land size"),
+            value: site?.profile?.landSize || translate("Pending"),
+            detail: translate("Active record")
+          },
+          {
+            label: translate("Location"),
+            value: site?.profile?.district
+              ? `${site.profile.district}, ${site.profile.state}`
+              : site?.profile?.state || translate("Pending"),
+            detail: translate("Agmarknet filters")
+          }
+        ]}
+      />
+
+      <SurfaceCard
+        eyebrow={translate("Farmer details")}
+        title={translate("Profile settings")}
+        subtitle={translate("Update the farmer details used for dashboard context and location-based price reporting.")}
+        elevated
+      >
+        <form className="grid gap-6" onSubmit={handleSubmit}>
+          <div className="grid gap-4 md:grid-cols-2">
+            <label className="grid gap-2 text-sm">
+              <span className="font-semibold text-slate-700">{translate("Farmer name")}</span>
+              <input
+                type="text"
+                value={formState.name}
+                onChange={(event) =>
+                  setFormState((current) => ({
+                    ...current,
+                    name: event.target.value
+                  }))
+                }
+                className="rounded-[1.3rem] border border-slate-200 bg-white px-4 py-3 font-semibold text-slate-900 outline-none"
+                placeholder={translate("Enter farmer name")}
+              />
+            </label>
+
+            <label className="grid gap-2 text-sm">
+              <span className="font-semibold text-slate-700">{translate("Land size")}</span>
+              <input
+                type="text"
+                value={formState.landSize}
+                onChange={(event) =>
+                  setFormState((current) => ({
+                    ...current,
+                    landSize: event.target.value
+                  }))
+                }
+                className="rounded-[1.3rem] border border-slate-200 bg-white px-4 py-3 font-semibold text-slate-900 outline-none"
+                placeholder={translate("Example: 4.5 acres")}
+              />
+            </label>
+
+            <label className="grid gap-2 text-sm">
+              <span className="font-semibold text-slate-700">{translate("State")}</span>
+              <select
+                value={formState.state}
+                onChange={(event) =>
+                  setFormState((current) => ({
+                    ...current,
+                    state: event.target.value,
+                    district: ""
+                  }))
+                }
+                className="rounded-[1.3rem] border border-slate-200 bg-white px-4 py-3 font-semibold text-slate-900 outline-none"
+              >
+                <option value="">{translate("Choose state")}</option>
+                {agmarknetLocations.map((state) => (
+                  <option key={state.id || state.name} value={state.name}>
+                    {state.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className="grid gap-2 text-sm">
+              <span className="font-semibold text-slate-700">{translate("District")}</span>
+              <select
+                value={formState.district}
+                onChange={(event) =>
+                  setFormState((current) => ({
+                    ...current,
+                    district: event.target.value
+                  }))
+                }
+                disabled={!formState.state}
+                className="rounded-[1.3rem] border border-slate-200 bg-white px-4 py-3 font-semibold text-slate-900 outline-none disabled:bg-slate-50 disabled:text-slate-400"
+              >
+                <option value="">{translate("Choose district")}</option>
+                {districtOptions.map((district) => (
+                  <option key={district.id || district.name} value={district.name}>
+                    {district.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-3">
+            <button
+              type="submit"
+              disabled={saving}
+              className="rounded-full bg-slate-950 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-400"
+            >
+              {saving ? translate("Saving...") : translate("Save profile")}
+            </button>
+            {saveMessage ? <p className="text-sm font-semibold text-emerald-700">{translate(saveMessage)}</p> : null}
+          </div>
+        </form>
+      </SurfaceCard>
     </div>
   );
 }
@@ -2346,19 +3632,18 @@ function ErrorScreen({ error, onRetry }) {
 
 function NavLink({ href, label, isActive, onNavigate, compact = false }) {
   return (
-    <a
-      href={href}
-      onClick={(event) => {
-        event.preventDefault();
+    <button
+      type="button"
+      onClick={() => {
         onNavigate(href);
       }}
-      className={`nav-link ${compact ? "justify-center text-center" : ""} ${
+      className={`nav-link ${compact ? "min-w-max shrink-0 justify-center text-center" : ""} ${
         isActive ? "nav-link--active" : ""
       }`}
       aria-current={isActive ? "page" : undefined}
     >
       {label}
-    </a>
+    </button>
   );
 }
 
@@ -2578,6 +3863,13 @@ function CropPredictionCard({ crop, selectedCropKey, predictedTag, onSelectCrop,
       <p className={`mt-3 text-sm leading-7 ${isSelected ? "text-white/78" : "text-slate-600"}`}>
         {translate(crop.reason)}
       </p>
+      {crop.marketSource ? (
+        <p className={`mt-2 text-xs ${isSelected ? "text-white/60" : "text-slate-500"}`}>
+          {`${crop.marketSource.source} • ${crop.marketSource.marketName}, ${
+            crop.marketSource.stateName
+          } • ${formatDateLong(crop.marketSource.lastReportedDate)}`}
+        </p>
+      ) : null}
     </button>
   );
 }
@@ -3044,6 +4336,12 @@ function RecommendationColumn({
             <div className="mt-4 grid gap-3 sm:grid-cols-2">
               <MiniStat label={translate("Content")} value={item.nutrientContent} />
               <MiniStat label={translate("Rate")} value={item.applicationRate} />
+              {item.brandExamples?.length ? (
+                <MiniStat
+                  label={translate("Brand examples")}
+                  value={item.brandExamples.join(", ")}
+                />
+              ) : null}
               {showPricing ? <MiniStat label={translate("Price range")} value={item.priceRange} /> : null}
               {showCostStats ? <MiniStat label={translate("Cost / acre")} value={item.costSummary.estimated} /> : null}
               {showCostStats ? <MiniStat label={translate("Total plan")} value={item.costSummary.total} /> : null}
@@ -3075,6 +4373,9 @@ function RecommendationCostGroup({ title, items = [], translate = (value) => val
           </div>
           <div className="mt-4 grid gap-3 sm:grid-cols-3">
             <MiniStat label={translate("Price range")} value={item.priceRange} />
+            {item.brandExamples?.length ? (
+              <MiniStat label={translate("Brand examples")} value={item.brandExamples.join(", ")} />
+            ) : null}
             <MiniStat label={translate("Cost / acre")} value={item.costSummary.estimated} />
             <MiniStat label={translate("Total plan")} value={item.costSummary.total} />
           </div>
@@ -3143,13 +4444,19 @@ function buildApplicationTimingItems(organicItems = [], inorganicItems = [], sel
   });
 }
 
-function MiniStat({ label, value }) {
+function MiniStat({ label, value, dark = false }) {
   return (
-    <div className="rounded-[1.2rem] bg-white px-4 py-3">
-      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+    <div className={`rounded-[1.2rem] px-4 py-3 ${dark ? "bg-white/10" : "bg-white"}`}>
+      <p
+        className={`text-[11px] font-semibold uppercase tracking-[0.18em] ${
+          dark ? "text-white/60" : "text-slate-500"
+        }`}
+      >
         {label}
       </p>
-      <p className="mt-2 text-sm font-semibold text-slate-900">{value}</p>
+      <p className={`mt-2 text-sm font-semibold ${dark ? "text-white" : "text-slate-900"}`}>
+        {value}
+      </p>
     </div>
   );
 }

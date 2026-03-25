@@ -19,6 +19,13 @@ const {
   hasSupabaseConfig
 } = require("./supabase");
 const { generateChatReply } = require("./gemini");
+const {
+  getAgmarknetCropInsights,
+  getAgmarknetCropPriceReport,
+  getAgmarknetLocations
+} = require("./agmarknet");
+const { getPpqsAdvisoriesForCrop } = require("./ppqs");
+const { getVikaspediaSchemeInsights } = require("./vikaspedia");
 
 loadEnv();
 const PORT = process.env.PORT || 3000;
@@ -296,6 +303,23 @@ function parseSitePatch(payload) {
     const farm = readTextField(pickField(profilePayload, ["farm"]), "profile.farm", {
       maxLength: 120
     });
+    const landSize = readTextField(
+      pickField(profilePayload, ["landSize", "land_size"]),
+      "profile.landSize",
+      {
+        maxLength: 40
+      }
+    );
+    const state = readTextField(pickField(profilePayload, ["state"]), "profile.state", {
+      maxLength: 80
+    });
+    const district = readTextField(
+      pickField(profilePayload, ["district"]),
+      "profile.district",
+      {
+        maxLength: 80
+      }
+    );
 
     if (name !== undefined) {
       profilePatch.name = name;
@@ -307,6 +331,18 @@ function parseSitePatch(payload) {
 
     if (farm !== undefined) {
       profilePatch.farm = farm;
+    }
+
+    if (landSize !== undefined) {
+      profilePatch.landSize = landSize;
+    }
+
+    if (state !== undefined) {
+      profilePatch.state = state;
+    }
+
+    if (district !== undefined) {
+      profilePatch.district = district;
     }
 
     if (Object.keys(profilePatch).length > 0) {
@@ -754,6 +790,130 @@ const server = http.createServer(async (req, res) => {
       sendJson(res, 200, result);
     } catch (error) {
       sendRouteError(res, error, "Unable to generate chatbot response.");
+    }
+    return;
+  }
+
+  if (pathname === "/api/agmarknet/prices" && req.method === "POST") {
+    try {
+      const payload = await parseJsonBody(req);
+      const cropKeys = Array.isArray(payload?.cropKeys)
+        ? payload.cropKeys
+            .map((value) => readTextField(value, "crop key", { maxLength: 60 }))
+            .filter(Boolean)
+        : [];
+
+      if (cropKeys.length === 0) {
+        throw createHttpError(400, "At least one crop key is required.");
+      }
+
+      const stateName = readTextField(pickField(payload, ["stateName", "state"]), "stateName", {
+        maxLength: 80
+      });
+      const districtName = readTextField(
+        pickField(payload, ["districtName", "district"]),
+        "districtName",
+        {
+          maxLength: 80
+        }
+      );
+      const insights = await getAgmarknetCropInsights(cropKeys, {
+        stateName,
+        districtName
+      });
+      sendJson(res, 200, {
+        source: "agmarknet",
+        insights
+      });
+    } catch (error) {
+      logWarning("agmarknet-prices", error);
+      sendRouteError(res, error, "Unable to load Agmarknet crop prices.");
+    }
+    return;
+  }
+
+  if (pathname === "/api/agmarknet/locations" && req.method === "GET") {
+    try {
+      const locations = await getAgmarknetLocations();
+      sendJson(res, 200, locations);
+    } catch (error) {
+      logWarning("agmarknet-locations", error);
+      sendRouteError(res, error, "Unable to load Agmarknet locations.");
+    }
+    return;
+  }
+
+  if (pathname === "/api/agmarknet/report" && req.method === "POST") {
+    try {
+      const payload = await parseJsonBody(req);
+      const cropKey = readTextField(
+        pickField(payload, ["cropKey"]),
+        "cropKey",
+        {
+          required: true,
+          maxLength: 60
+        }
+      );
+      const stateName = readTextField(pickField(payload, ["stateName", "state"]), "stateName", {
+        maxLength: 80
+      });
+      const districtName = readTextField(
+        pickField(payload, ["districtName", "district"]),
+        "districtName",
+        {
+          maxLength: 80
+        }
+      );
+      const report = await getAgmarknetCropPriceReport({
+        cropKey,
+        stateName,
+        districtName
+      });
+
+      sendJson(res, 200, {
+        source: "agmarknet",
+        report
+      });
+    } catch (error) {
+      logWarning("agmarknet-report", error);
+      sendRouteError(res, error, "Unable to load Agmarknet crop report.");
+    }
+    return;
+  }
+
+  if (pathname === "/api/ppqs/advisories" && req.method === "POST") {
+    try {
+      const payload = await parseJsonBody(req);
+      const cropKey = readTextField(
+        pickField(payload, ["cropKey"]),
+        "cropKey",
+        {
+          required: true,
+          maxLength: 60
+        }
+      );
+      const advisories = await getPpqsAdvisoriesForCrop(cropKey);
+
+      sendJson(res, 200, advisories);
+    } catch (error) {
+      logWarning("ppqs-advisories", error);
+      sendRouteError(res, error, "Unable to load PPQS advisories.");
+    }
+    return;
+  }
+
+  if (pathname === "/api/vikaspedia/schemes" && req.method === "POST") {
+    try {
+      const payload = await parseJsonBody(req);
+      const stateName = readTextField(pickField(payload, ["stateName", "state"]), "stateName", {
+        maxLength: 80
+      });
+      const schemes = await getVikaspediaSchemeInsights(stateName || "");
+
+      sendJson(res, 200, schemes);
+    } catch (error) {
+      logWarning("vikaspedia-schemes", error);
+      sendRouteError(res, error, "Unable to load government schemes.");
     }
     return;
   }

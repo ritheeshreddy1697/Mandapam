@@ -1,7 +1,7 @@
 const defaultUiText = {
   welcomePrefix: "Welcome,",
   farmProfileLabel: "Farm Profile",
-  manageAccountLabel: "Manage account",
+  manageAccountLabel: "Profile",
   recommendationTableTitle: "Nutrient Table",
   recommendationTableHeaders: {
     nutrient: "Nutrient",
@@ -241,7 +241,10 @@ const defaultSiteData = {
   profile: {
     name: "Test User",
     role: "Farm Manager",
-    farm: "Mandapam Demonstration Farm"
+    farm: "Mandapam Demonstration Farm",
+    landSize: "",
+    state: "",
+    district: ""
   },
   uiText: defaultUiText
 };
