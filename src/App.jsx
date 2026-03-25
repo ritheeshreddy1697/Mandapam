@@ -25,6 +25,7 @@ import {
   priorityTone,
   severityTone
 } from "./lib/dashboard";
+import { requestJson } from "./lib/api";
 
 const NAV_ITEM_CONFIG = [
   {
@@ -858,8 +859,7 @@ function App() {
 
     async function loadLocations() {
       try {
-        const response = await fetch("/api/agmarknet/locations");
-        const payload = await response.json();
+        const { response, payload } = await requestJson("/api/agmarknet/locations");
 
         if (!response.ok || cancelled) {
           return;
@@ -911,7 +911,7 @@ function App() {
 
     async function loadAgmarknetPrices() {
       try {
-        const response = await fetch("/api/agmarknet/prices", {
+        const { response, payload } = await requestJson("/api/agmarknet/prices", {
           method: "POST",
           headers: {
             "Content-Type": "application/json"
@@ -922,7 +922,6 @@ function App() {
             districtName: site?.profile?.district || ""
           })
         });
-        const payload = await response.json();
 
         if (!response.ok || cancelled) {
           return;
@@ -969,7 +968,7 @@ function App() {
 
     async function loadPpqsAdvisories() {
       try {
-        const response = await fetch("/api/ppqs/advisories", {
+        const { response, payload } = await requestJson("/api/ppqs/advisories", {
           method: "POST",
           headers: {
             "Content-Type": "application/json"
@@ -978,7 +977,6 @@ function App() {
             cropKey: selectedCropKey
           })
         });
-        const payload = await response.json();
 
         if (!response.ok || cancelled) {
           return;
@@ -1014,7 +1012,7 @@ function App() {
       setPriceReportError("");
 
       try {
-        const response = await fetch("/api/agmarknet/report", {
+        const { response, payload } = await requestJson("/api/agmarknet/report", {
           method: "POST",
           headers: {
             "Content-Type": "application/json"
@@ -1025,7 +1023,6 @@ function App() {
             districtName: priceFilterDistrict
           })
         });
-        const payload = await response.json();
 
         if (!response.ok) {
           throw new Error(payload.error || "Unable to load crop price report.");
@@ -1065,7 +1062,7 @@ function App() {
       setSchemeInsightsError("");
 
       try {
-        const response = await fetch("/api/vikaspedia/schemes", {
+        const { response, payload } = await requestJson("/api/vikaspedia/schemes", {
           method: "POST",
           headers: {
             "Content-Type": "application/json"
@@ -1074,7 +1071,6 @@ function App() {
             stateName: schemeFilterState
           })
         });
-        const payload = await response.json();
 
         if (!response.ok) {
           throw new Error(payload.error || "Unable to load government schemes.");
@@ -1268,12 +1264,13 @@ function App() {
     setError("");
 
     try {
-      const [siteResponse, dashboardResponse] = await Promise.all([
-        fetch("/api/site-data"),
-        fetch("/api/dashboard")
+      const [
+        { response: siteResponse, payload: sitePayload },
+        { response: dashboardResponse, payload: dashboardPayload }
+      ] = await Promise.all([
+        requestJson("/api/site-data"),
+        requestJson("/api/dashboard")
       ]);
-      const sitePayload = await siteResponse.json();
-      const dashboardPayload = await dashboardResponse.json();
 
       if (!siteResponse.ok) {
         throw new Error(sitePayload.error || "Unable to load site data.");
@@ -1300,14 +1297,13 @@ function App() {
     setLanguageBusy(true);
 
     try {
-      const response = await fetch("/api/preferences/language", {
+      const { response, payload } = await requestJson("/api/preferences/language", {
         method: "POST",
         headers: {
           "Content-Type": "application/json"
         },
         body: JSON.stringify({ language: nextLanguage })
       });
-      const payload = await response.json();
 
       if (!response.ok) {
         throw new Error(payload.error || "Unable to save language preference.");
@@ -1327,7 +1323,7 @@ function App() {
     setError("");
 
     try {
-      const response = await fetch("/api/site-data", {
+      const { response, payload } = await requestJson("/api/site-data", {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json"
@@ -1336,7 +1332,6 @@ function App() {
           profile: profilePatch
         })
       });
-      const payload = await response.json();
 
       if (!response.ok) {
         throw new Error(payload.error || "Unable to save profile.");
@@ -1372,7 +1367,7 @@ function App() {
     ]);
 
     try {
-      const response = await fetch("/api/chat", {
+      const { response, payload } = await requestJson("/api/chat", {
         method: "POST",
         headers: {
           "Content-Type": "application/json"
@@ -1382,7 +1377,6 @@ function App() {
           history: nextHistory.filter((entry) => entry.role !== "status")
         })
       });
-      const payload = await response.json();
 
       if (!response.ok) {
         throw new Error(payload.error || "Unable to generate chatbot response.");

@@ -676,7 +676,7 @@ function logWarning(scope, error) {
   console.warn(`[server:${scope}] ${message}`);
 }
 
-const server = http.createServer(async (req, res) => {
+async function requestListener(req, res) {
   const requestUrl = new URL(req.url, `http://${req.headers.host}`);
   const pathname = requestUrl.pathname;
 
@@ -918,6 +918,13 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  if (pathname.startsWith("/api/")) {
+    sendJson(res, 404, {
+      error: "API route not found."
+    });
+    return;
+  }
+
   const requestedFile = pathname === "/" ? "index.html" : pathname.slice(1);
   const resolvedPath = path.resolve(clientDir, requestedFile);
 
@@ -927,8 +934,20 @@ const server = http.createServer(async (req, res) => {
   }
 
   serveFile(res, resolvedPath);
-});
+}
 
-server.listen(PORT, () => {
-  console.log(`Agricure server running on http://localhost:${PORT}`);
-});
+function createServer() {
+  return http.createServer(requestListener);
+}
+
+if (require.main === module) {
+  const server = createServer();
+  server.listen(PORT, () => {
+    console.log(`Agricure server running on http://localhost:${PORT}`);
+  });
+}
+
+module.exports = {
+  createServer,
+  requestListener
+};

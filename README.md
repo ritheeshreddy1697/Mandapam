@@ -35,6 +35,12 @@ The Vite dev server runs on `http://localhost:5173` and proxies `/api/*` request
 - `npm start` serves the built React app from `dist/`
 - run `npm run build` before `npm start`
 
+## Deployment
+
+- This repo includes a Vercel-compatible catch-all API function at [`api/[...route].js`](/Users/ritheeshreddy/Desktop/mandapam/api/[...route].js), so the frontend and backend can be deployed from the same project.
+- If you deploy the frontend and backend separately, set `VITE_API_BASE_URL` to the live backend origin so frontend requests do not default to the current site.
+- If the UI shows an HTML/JSON parsing error in production, it usually means `/api/*` is being served by the frontend host instead of the backend route.
+
 ## Backend endpoints
 
 - `GET /api/site-data`
