@@ -31,23 +31,28 @@ import { requestJson } from "./lib/api";
 const NAV_ITEM_CONFIG = [
   {
     path: "/",
-    label: "Overview"
+    label: "Overview",
+    icon: "overview"
   },
   {
     path: "/action-planner",
-    label: "Action Planner"
+    label: "Action Planner",
+    icon: "planner"
   },
   {
     path: "/recommendations",
-    label: "Recommendations"
+    label: "Recommendations",
+    icon: "recommendations"
   },
   {
     path: "/sensor-data",
-    label: "Sensor Data"
+    label: "Sensor Data",
+    icon: "sensor"
   },
   {
     path: "/storages",
-    label: "Storages"
+    label: "Storages",
+    icon: "storage"
   }
 ];
 
@@ -2359,25 +2364,25 @@ function App() {
 
   return (
     <>
-      <div className="page-shell relative min-h-screen overflow-x-clip px-4 pb-20 pt-4 sm:px-6 lg:px-8">
+      <div className="page-shell relative min-h-screen overflow-x-clip px-3 pb-28 pt-3 sm:px-6 sm:pb-20 sm:pt-4 lg:px-8">
         <div className="page-glow page-glow--one" />
         <div className="page-glow page-glow--two" />
 
-        <header className="sticky top-0 z-40 -mx-4 w-[calc(100%+2rem)] sm:-mx-6 sm:w-[calc(100%+3rem)] lg:-mx-8 lg:w-[calc(100%+4rem)]">
-          <div className="nav-shell flex flex-wrap items-center justify-between gap-4 rounded-none border-x-0 border-t-0 px-4 py-4 sm:px-6 lg:px-8">
+        <header className="sticky top-0 z-40 -mx-3 w-[calc(100%+1.5rem)] sm:-mx-6 sm:w-[calc(100%+3rem)] lg:-mx-8 lg:w-[calc(100%+4rem)]">
+          <div className="nav-shell flex flex-col gap-3 rounded-none border-x-0 border-t-0 px-3 py-3 sm:px-6 sm:py-4 lg:flex-row lg:items-center lg:justify-between lg:px-8">
             <button
               type="button"
               onClick={() => navigateTo("/")}
               className="flex items-center gap-3 text-left"
             >
-              <div className="grid h-12 w-12 place-items-center rounded-2xl bg-[linear-gradient(135deg,#0f172a_0%,#17324d_52%,#1f5c4e_100%)] text-base font-black text-white shadow-soft ring-1 ring-slate-200/60">
+              <div className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-[linear-gradient(135deg,#0f172a_0%,#17324d_52%,#1f5c4e_100%)] text-base font-black text-white shadow-soft ring-1 ring-slate-200/60 sm:h-12 sm:w-12">
                 A
               </div>
-              <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.32em] text-slate-500">
+              <div className="min-w-0">
+                <p className="hidden text-[10px] font-semibold uppercase tracking-[0.28em] text-slate-500 sm:block">
                   Agricultural Intelligence Platform
                 </p>
-                <h1 className="executive-title text-2xl font-bold">
+                <h1 className="executive-title text-xl font-bold sm:text-2xl">
                   AgriCure
                 </h1>
               </div>
@@ -2395,7 +2400,23 @@ function App() {
               ))}
             </nav>
 
-            <div className="flex items-center gap-3 sm:gap-4">
+            <div className="flex items-center justify-between gap-3 sm:gap-4">
+              <label className="flex min-w-0 items-center gap-2 rounded-full border border-slate-200/80 bg-white/90 px-3 py-2 text-sm text-slate-700 shadow-soft sm:hidden">
+                <span className="truncate font-semibold text-slate-500">{translate("Language")}</span>
+                <select
+                  value={site.selectedLanguage}
+                  onChange={(event) => handleLanguageChange(event.target.value)}
+                  disabled={languageBusy}
+                  className="min-w-0 bg-transparent font-semibold text-slate-900 outline-none"
+                >
+                  {site.languages.map((language) => (
+                    <option key={language.code} value={language.code}>
+                      {getLanguageOptionLabel(language, activeLanguage)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
               <label className="hidden items-center gap-2 rounded-full border border-slate-200/80 bg-white/90 px-4 py-2 text-sm text-slate-700 shadow-soft sm:flex">
                 <span className="font-semibold text-slate-500">{translate("Language")}</span>
                 <select
@@ -2416,9 +2437,9 @@ function App() {
                 <button
                   type="button"
                   onClick={() => setProfileOpen((current) => !current)}
-                  className="flex items-center gap-3 rounded-full border border-slate-200/80 bg-white/92 px-3 py-2 shadow-soft transition hover:-translate-y-0.5"
+                  className="flex items-center gap-2 rounded-full border border-slate-200/80 bg-white/92 px-2.5 py-2 shadow-soft transition hover:-translate-y-0.5 sm:gap-3 sm:px-3"
                 >
-                  <div className="grid h-11 w-11 place-items-center rounded-full bg-[linear-gradient(135deg,#0f172a_0%,#1f5c4e_100%)] text-sm font-bold text-white shadow-soft">
+                  <div className="grid h-10 w-10 place-items-center rounded-full bg-[linear-gradient(135deg,#0f172a_0%,#1f5c4e_100%)] text-sm font-bold text-white shadow-soft sm:h-11 sm:w-11">
                     {site.profile.name
                       .split(" ")
                       .map((part) => part[0])
@@ -2434,7 +2455,7 @@ function App() {
                 </button>
 
                 {profileOpen ? (
-                  <div className="executive-surface absolute right-0 top-[calc(100%+14px)] z-20 w-80 rounded-[1.6rem] p-5 backdrop-blur-xl">
+                  <div className="executive-surface absolute right-0 top-[calc(100%+14px)] z-20 w-[min(22rem,calc(100vw-1.5rem))] rounded-[1.35rem] p-4 backdrop-blur-xl sm:w-80 sm:rounded-[1.6rem] sm:p-5">
                     <p className="text-xs font-semibold uppercase tracking-[0.26em] text-slate-500">
                       {uiText.farmProfileLabel}
                     </p>
@@ -2486,7 +2507,7 @@ function App() {
             </div>
           </div>
 
-          <nav className="mt-3 flex gap-2 overflow-x-auto pb-1 lg:hidden">
+          <nav className="mt-3 hidden gap-2 overflow-x-auto pb-1 sm:flex sm:flex-wrap lg:hidden">
             {navItems.map((item) => (
               <NavLink
                 key={item.path}
@@ -2500,7 +2521,7 @@ function App() {
           </nav>
         </header>
 
-        <main className="mx-auto mt-8 flex w-full max-w-[96rem] flex-col gap-10 px-0 sm:px-2 lg:px-2">
+        <main className="mx-auto mt-5 flex w-full max-w-[96rem] flex-col gap-6 px-0 sm:mt-8 sm:gap-8 sm:px-2 lg:gap-10 lg:px-2">
           {plannerReminders.length ? (
             <PlannerReminderBanner
               reminders={plannerReminders}
@@ -2638,6 +2659,12 @@ function App() {
         </main>
       </div>
 
+      <MobileTabBar
+        items={navItems}
+        pathname={pathname}
+        onNavigate={navigateTo}
+      />
+
       <ChatWidget
         isOpen={chatOpen}
         onToggle={() => setChatOpen((current) => !current)}
@@ -2652,6 +2679,109 @@ function App() {
         onSubmit={handleChatSubmit}
       />
     </>
+  );
+}
+
+function NavIcon({ icon, active }) {
+  const tone = active ? "text-white" : "text-slate-500";
+
+  if (icon === "overview") {
+    return (
+      <svg viewBox="0 0 24 24" fill="none" className={`h-5 w-5 ${tone}`} aria-hidden="true">
+        <path
+          d="M4.75 10.25L12 4.75L19.25 10.25V18A1.25 1.25 0 0 1 18 19.25H6A1.25 1.25 0 0 1 4.75 18V10.25Z"
+          stroke="currentColor"
+          strokeWidth="1.8"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </svg>
+    );
+  }
+
+  if (icon === "planner") {
+    return (
+      <svg viewBox="0 0 24 24" fill="none" className={`h-5 w-5 ${tone}`} aria-hidden="true">
+        <path
+          d="M7.5 3.75V6.25M16.5 3.75V6.25M4.75 8H19.25M6.25 20.25H17.75A1.5 1.5 0 0 0 19.25 18.75V6.25A1.5 1.5 0 0 0 17.75 4.75H6.25A1.5 1.5 0 0 0 4.75 6.25V18.75A1.5 1.5 0 0 0 6.25 20.25ZM8 11.5H12.5"
+          stroke="currentColor"
+          strokeWidth="1.8"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </svg>
+    );
+  }
+
+  if (icon === "recommendations") {
+    return (
+      <svg viewBox="0 0 24 24" fill="none" className={`h-5 w-5 ${tone}`} aria-hidden="true">
+        <path
+          d="M12 19.25C15.4518 19.25 18.25 16.4518 18.25 13C18.25 9.54822 15.4518 6.75 12 6.75C8.54822 6.75 5.75 9.54822 5.75 13C5.75 16.4518 8.54822 19.25 12 19.25ZM12 4.75V2.75M7.05 7.05L5.64 5.64M4.75 13H2.75M19.25 13H21.25M16.95 7.05L18.36 5.64"
+          stroke="currentColor"
+          strokeWidth="1.8"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </svg>
+    );
+  }
+
+  if (icon === "sensor") {
+    return (
+      <svg viewBox="0 0 24 24" fill="none" className={`h-5 w-5 ${tone}`} aria-hidden="true">
+        <path
+          d="M12 18.75A2.75 2.75 0 1 0 12 13.25A2.75 2.75 0 0 0 12 18.75ZM12 5.25V8.25M5.64 8.64L7.76 10.76M18.36 8.64L16.24 10.76M4.75 13H7.25M16.75 13H19.25"
+          stroke="currentColor"
+          strokeWidth="1.8"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </svg>
+    );
+  }
+
+  return (
+    <svg viewBox="0 0 24 24" fill="none" className={`h-5 w-5 ${tone}`} aria-hidden="true">
+      <path
+        d="M5.75 8.25H18.25M7.25 5.25H16.75M7 18.75H17A1.75 1.75 0 0 0 18.75 17V9.5A1.75 1.75 0 0 0 17 7.75H7A1.75 1.75 0 0 0 5.25 9.5V17A1.75 1.75 0 0 0 7 18.75ZM9 11.25H15M9 14.25H13"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function MobileTabBar({ items, pathname, onNavigate }) {
+  return (
+    <div className="fixed inset-x-3 bottom-3 z-40 sm:hidden">
+      <nav className="mobile-tabbar glass-panel grid grid-cols-5 gap-1.5 p-1.5">
+        {items.map((item) => {
+          const isActive = pathname === item.path;
+
+          return (
+            <button
+              key={item.path}
+              type="button"
+              onClick={() => onNavigate(item.path)}
+              className={`flex min-h-[4.35rem] flex-col items-center justify-center gap-1 rounded-[1.1rem] px-1 py-2 text-center transition ${
+                isActive
+                  ? "bg-[linear-gradient(135deg,#0f172a_0%,#17324d_55%,#1f5c4e_100%)] text-white shadow-[0_12px_26px_rgba(15,23,42,0.18)]"
+                  : "bg-white/72 text-slate-600"
+              }`}
+              aria-current={isActive ? "page" : undefined}
+            >
+              <NavIcon icon={item.icon} active={isActive} />
+              <span className={`text-[10px] font-semibold leading-tight ${isActive ? "text-white" : "text-slate-600"}`}>
+                {item.label}
+              </span>
+            </button>
+          );
+        })}
+      </nav>
+    </div>
   );
 }
 
@@ -4832,7 +4962,7 @@ function NavLink({ href, label, isActive, onNavigate, compact = false }) {
       onClick={() => {
         onNavigate(href);
       }}
-      className={`nav-link ${compact ? "min-w-max shrink-0 justify-center text-center" : ""} ${
+      className={`nav-link ${compact ? "w-full justify-center text-center sm:min-w-max sm:shrink-0" : ""} ${
         isActive ? "nav-link--active" : ""
       }`}
       aria-current={isActive ? "page" : undefined}
@@ -4851,21 +4981,21 @@ function PageHero({
   stats
 }) {
   return (
-    <section className="hero-shell relative overflow-hidden rounded-[2.5rem] px-6 py-8 sm:px-8 sm:py-10 lg:px-10 lg:py-12">
+    <section className="hero-shell relative overflow-hidden rounded-[1.9rem] px-4 py-6 sm:rounded-[2.3rem] sm:px-8 sm:py-10 lg:px-10 lg:py-12">
       <div className="hero-orb hero-orb--green" />
       <div className="hero-orb hero-orb--blue" />
-      <div className="relative grid gap-8 xl:grid-cols-[1.2fr_0.8fr] xl:items-end">
+      <div className="relative grid gap-6 sm:gap-8 xl:grid-cols-[1.2fr_0.8fr] xl:items-end">
         <div className="max-w-4xl">
           <Reveal>
             <p className="hero-badge">{eyebrow}</p>
           </Reveal>
           <Reveal delay={100}>
-            <h2 className="executive-title mt-4 max-w-4xl text-4xl font-black sm:text-5xl xl:text-6xl">
+            <h2 className="executive-title mt-4 max-w-4xl text-[2rem] font-black leading-tight sm:text-5xl xl:text-6xl">
               {title}
             </h2>
           </Reveal>
           <Reveal delay={220}>
-            <p className="mt-5 max-w-2xl text-base leading-8 text-slate-600 sm:text-lg">
+            <p className="mt-4 max-w-2xl text-sm leading-7 text-slate-600 sm:mt-5 sm:text-lg sm:leading-8">
               {description}
             </p>
           </Reveal>
@@ -4873,12 +5003,12 @@ function PageHero({
             <div className="title-rule mt-6" />
           </Reveal>
           <Reveal delay={320}>
-            <div className="mt-7 flex flex-wrap gap-3">
+            <div className="mt-6 flex flex-col gap-3 sm:mt-7 sm:flex-row sm:flex-wrap">
               {primaryAction ? (
                 <button
                   type="button"
                   onClick={primaryAction.onClick}
-                  className="rounded-full bg-[linear-gradient(135deg,#0f172a_0%,#17324d_55%,#1f5c4e_100%)] px-5 py-3 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:brightness-105"
+                  className="w-full rounded-full bg-[linear-gradient(135deg,#0f172a_0%,#17324d_55%,#1f5c4e_100%)] px-5 py-3 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:brightness-105 sm:w-auto"
                 >
                   {primaryAction.label}
                 </button>
@@ -4887,7 +5017,7 @@ function PageHero({
                 <button
                   type="button"
                   onClick={secondaryAction.onClick}
-                  className="rounded-full border border-slate-200/80 bg-white/92 px-5 py-3 text-sm font-semibold text-slate-700 transition hover:-translate-y-0.5 hover:bg-white"
+                  className="w-full rounded-full border border-slate-200/80 bg-white/92 px-5 py-3 text-sm font-semibold text-slate-700 transition hover:-translate-y-0.5 hover:bg-white sm:w-auto"
                 >
                   {secondaryAction.label}
                 </button>
@@ -4918,7 +5048,7 @@ function PageHero({
 
 function SurfaceCard({ eyebrow, title, subtitle, right, children, elevated = false }) {
   return (
-    <section className={`glass-panel p-6 sm:p-7 ${elevated ? "shadow-ambient ring-1 ring-slate-200/60" : ""}`}>
+    <section className={`glass-panel p-4 sm:p-7 ${elevated ? "shadow-ambient ring-1 ring-slate-200/60" : ""}`}>
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div className="max-w-3xl">
           {eyebrow ? (
@@ -4926,11 +5056,11 @@ function SurfaceCard({ eyebrow, title, subtitle, right, children, elevated = fal
               {eyebrow}
             </p>
           ) : null}
-          <h2 className="executive-title mt-2 text-3xl font-black">
+          <h2 className="executive-title mt-2 text-2xl font-black sm:text-3xl">
             {title}
           </h2>
           {subtitle ? (
-            <p className="mt-3 max-w-3xl text-sm leading-7 text-slate-600">{subtitle}</p>
+            <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-600 sm:leading-7">{subtitle}</p>
           ) : null}
           <div className="title-rule mt-4" />
         </div>
@@ -4943,13 +5073,13 @@ function SurfaceCard({ eyebrow, title, subtitle, right, children, elevated = fal
 
 function HealthSignalCard({ dashboard, translate = (value) => value }) {
   return (
-    <article className="hover-lift overflow-hidden rounded-[2rem] bg-[linear-gradient(135deg,#0f172a_0%,#16253a_48%,#1f5c4e_100%)] p-6 text-white shadow-ambient">
+    <article className="hover-lift overflow-hidden rounded-[1.6rem] bg-[linear-gradient(135deg,#0f172a_0%,#16253a_48%,#1f5c4e_100%)] p-4 text-white shadow-ambient sm:rounded-[2rem] sm:p-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.28em] text-white/55">
             {translate("Soil status")}
           </p>
-          <h3 className="mt-3 font-display text-4xl font-black tracking-[-0.03em]">
+          <h3 className="mt-3 font-display text-3xl font-black tracking-[-0.03em] sm:text-4xl">
             {dashboard.overview.soilHealth.score}%
           </h3>
           <p className="mt-3 max-w-md text-sm leading-7 text-white/78">
@@ -4978,11 +5108,11 @@ function HealthSignalCard({ dashboard, translate = (value) => value }) {
 
 function MetricTile({ label, value, tone }) {
   return (
-    <article className={`hover-lift rounded-[1.7rem] border p-5 ${toneBorder(tone)} ${toneSurface(tone)} shadow-[0_14px_34px_rgba(15,23,42,0.05)]`}>
+    <article className={`hover-lift rounded-[1.35rem] border p-4 sm:rounded-[1.7rem] sm:p-5 ${toneBorder(tone)} ${toneSurface(tone)} shadow-[0_14px_34px_rgba(15,23,42,0.05)]`}>
       <p className={`text-xs font-semibold uppercase tracking-[0.24em] ${toneText(tone)}`}>
         {label}
       </p>
-      <h3 className="executive-title mt-3 text-3xl font-black">
+      <h3 className="executive-title mt-3 text-2xl font-black sm:text-3xl">
         {value}
       </h3>
     </article>
@@ -5414,7 +5544,7 @@ function PlannerCalendar({
       </div>
 
       <div className="overflow-x-auto pb-2">
-        <div className="min-w-[44rem] grid gap-3">
+        <div className="min-w-[34rem] grid gap-3 sm:min-w-[44rem]">
           <div className="grid grid-cols-7 gap-2 text-center text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
             {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day) => (
               <div key={day} className="py-2">
@@ -5433,7 +5563,7 @@ function PlannerCalendar({
                     onSelectDate(day.isoDate);
                   }
                 }}
-                className={`aspect-square min-h-[96px] rounded-[1.3rem] border p-3 align-top ${
+                className={`aspect-square min-h-[82px] rounded-[1.1rem] border p-2.5 align-top sm:min-h-[96px] sm:rounded-[1.3rem] sm:p-3 ${
                   day.isCurrentMonth
                     ? "border-slate-200 bg-white"
                     : "border-slate-100 bg-slate-50 text-slate-400"
@@ -6097,7 +6227,7 @@ function ChatWidget({
   }
 
   return (
-    <div ref={widgetRef} className="fixed bottom-5 right-5 z-30 flex flex-col items-end gap-3">
+    <div ref={widgetRef} className="fixed bottom-24 right-3 z-30 flex flex-col items-end gap-3 sm:bottom-5 sm:right-5">
       {isOpen ? (
         <div className="glass-panel w-[min(430px,calc(100vw-2.5rem))] overflow-hidden">
           <div className="border-b border-white/60 bg-slate-950 px-5 py-4 text-white">
@@ -6212,18 +6342,24 @@ function ChatWidget({
       <button
         type="button"
         onClick={onToggle}
-        className="group overflow-hidden rounded-[1.7rem] bg-slate-950 px-5 py-4 text-left text-white shadow-ambient transition hover:-translate-y-0.5"
+        aria-label={uiText.launcherTitle}
+        className="group grid h-14 w-14 place-items-center overflow-hidden rounded-full bg-slate-950 text-left text-white shadow-ambient transition hover:-translate-y-0.5 sm:flex sm:h-auto sm:w-auto sm:items-center sm:rounded-[1.7rem] sm:px-5 sm:py-4"
       >
-        <p className="text-xs font-semibold uppercase tracking-[0.28em] text-white/55">
-          {uiText.launcherSubtitle}
-        </p>
-        <div className="mt-2 flex items-center gap-3">
-          <div className="grid h-10 w-10 place-items-center rounded-2xl bg-white/10">
-            <span className="text-lg">{translate("AI")}</span>
-          </div>
-          <div>
-            <p className="font-display text-lg font-bold">{uiText.launcherTitle}</p>
-            <p className="text-sm text-white/70">{translate("Open assistant")}</p>
+        <div className="grid h-10 w-10 place-items-center rounded-full bg-white/10 sm:hidden">
+          <span className="text-lg">{translate("AI")}</span>
+        </div>
+        <div className="hidden sm:ml-3 sm:block">
+          <p className="text-xs font-semibold uppercase tracking-[0.28em] text-white/55">
+            {uiText.launcherSubtitle}
+          </p>
+          <div className="mt-2 flex items-center gap-3">
+            <div className="hidden h-10 w-10 place-items-center rounded-2xl bg-white/10 sm:grid">
+              <span className="text-lg">{translate("AI")}</span>
+            </div>
+            <div>
+              <p className="font-display text-lg font-bold">{uiText.launcherTitle}</p>
+              <p className="text-sm text-white/70">{translate("Open assistant")}</p>
+            </div>
           </div>
         </div>
       </button>

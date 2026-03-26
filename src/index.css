@@ -261,6 +261,7 @@
   .executive-title {
     @apply font-display tracking-[-0.035em] text-slate-950;
     text-wrap: balance;
+    overflow-wrap: anywhere;
     text-shadow: 0 1px 0 rgba(255, 255, 255, 0.45);
   }
 
@@ -279,6 +280,73 @@
     border-radius: 9999px;
     background: linear-gradient(90deg, #0f172a 0%, #1f5c4e 52%, #0ea5e9 100%);
     box-shadow: 0 10px 20px rgba(31, 92, 78, 0.16);
+  }
+}
+
+@media (max-width: 640px) {
+  @layer base {
+    body {
+      background-attachment: scroll;
+    }
+  }
+
+  @layer components {
+    .glass-panel {
+      border-radius: 1.45rem;
+      box-shadow:
+        0 16px 38px rgba(15, 23, 42, 0.06),
+        inset 0 1px 0 rgba(255, 255, 255, 0.72);
+    }
+
+    .nav-shell {
+      border-bottom-left-radius: 1.35rem;
+      border-bottom-right-radius: 1.35rem;
+    }
+
+    .nav-link {
+      min-height: 46px;
+      padding: 0.8rem 1rem;
+      font-size: 0.85rem;
+      border-radius: 1rem;
+    }
+
+    .mobile-tabbar {
+      background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(241, 245, 249, 0.92));
+      box-shadow:
+        0 20px 44px rgba(15, 23, 42, 0.14),
+        inset 0 1px 0 rgba(255, 255, 255, 0.72);
+    }
+
+    .hero-badge {
+      letter-spacing: 0.22em;
+    }
+
+    .section-kicker {
+      letter-spacing: 0.2em;
+    }
+
+    .title-rule {
+      width: 3.5rem;
+      height: 0.28rem;
+    }
+
+    .page-glow {
+      opacity: 0.28;
+      filter: blur(54px);
+    }
+
+    .page-glow--one {
+      left: -120px;
+      width: 220px;
+      height: 220px;
+    }
+
+    .page-glow--two {
+      right: -100px;
+      width: 200px;
+      height: 200px;
+    }
   }
 }
 
