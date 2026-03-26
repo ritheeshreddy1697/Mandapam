@@ -4,22 +4,22 @@ module.exports = {
   theme: {
     extend: {
       fontFamily: {
-        sans: ["Plus Jakarta Sans", "sans-serif"],
-        display: ["Space Grotesk", "sans-serif"]
+        sans: ["Manrope", "sans-serif"],
+        display: ["Sora", "sans-serif"]
       },
       boxShadow: {
-        ambient: "0 28px 90px rgba(15, 23, 42, 0.12)",
-        soft: "0 16px 42px rgba(15, 23, 42, 0.08)"
+        ambient: "0 28px 90px rgba(15, 23, 42, 0.10)",
+        soft: "0 18px 48px rgba(15, 23, 42, 0.08)"
       },
       colors: {
         soil: {
-          ink: "#102314",
-          moss: "#2f6a41",
-          sage: "#7ea174",
-          leaf: "#83bf53",
-          sand: "#f4efe3",
-          clay: "#e7dcc7",
-          mist: "#f8fbf4"
+          ink: "#0f172a",
+          moss: "#1f5c4e",
+          sage: "#7f9b95",
+          leaf: "#38a169",
+          sand: "#eef2f7",
+          clay: "#dbe4ee",
+          mist: "#f8fafc"
         }
       }
     }

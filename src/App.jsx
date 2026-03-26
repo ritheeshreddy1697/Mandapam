@@ -6,6 +6,7 @@ import {
   isVegetableCropKey
 } from "./lib/crops";
 import {
+  buildRecommendationCostTotals,
   buildCropSpecificTableRows,
   buildCropSpecificRecommendations,
   buildEnvironmentSegments,
@@ -1867,10 +1868,18 @@ function App() {
       }
     }
 
-    document.addEventListener("mousedown", handlePointerDown);
+    function handleKeyDown(event) {
+      if (event.key === "Escape") {
+        setProfileOpen(false);
+      }
+    }
+
+    document.addEventListener("pointerdown", handlePointerDown);
+    document.addEventListener("keydown", handleKeyDown);
 
     return () => {
-      document.removeEventListener("mousedown", handlePointerDown);
+      document.removeEventListener("pointerdown", handlePointerDown);
+      document.removeEventListener("keydown", handleKeyDown);
     };
   }, []);
 
@@ -2094,14 +2103,14 @@ function App() {
               onClick={() => navigateTo("/")}
               className="flex items-center gap-3 text-left"
             >
-              <div className="grid h-12 w-12 place-items-center rounded-2xl bg-gradient-to-br from-emerald-500 via-lime-400 to-cyan-300 text-base font-black text-slate-950 shadow-soft">
+              <div className="grid h-12 w-12 place-items-center rounded-2xl bg-[linear-gradient(135deg,#0f172a_0%,#17324d_52%,#1f5c4e_100%)] text-base font-black text-white shadow-soft ring-1 ring-slate-200/60">
                 A
               </div>
               <div>
                 <p className="text-[11px] font-semibold uppercase tracking-[0.32em] text-slate-500">
-                  Startup-grade agronomy
+                  Agricultural Intelligence Platform
                 </p>
-                <h1 className="font-display text-2xl font-bold tracking-tight text-slate-950">
+                <h1 className="executive-title text-2xl font-bold">
                   AgriCure
                 </h1>
               </div>
@@ -2120,7 +2129,7 @@ function App() {
             </nav>
 
             <div className="flex items-center gap-3 sm:gap-4">
-              <label className="hidden items-center gap-2 rounded-full border border-slate-200 bg-white/80 px-4 py-2 text-sm text-slate-700 shadow-soft sm:flex">
+              <label className="hidden items-center gap-2 rounded-full border border-slate-200/80 bg-white/90 px-4 py-2 text-sm text-slate-700 shadow-soft sm:flex">
                 <span className="font-semibold text-slate-500">{translate("Language")}</span>
                 <select
                   value={site.selectedLanguage}
@@ -2140,9 +2149,9 @@ function App() {
                 <button
                   type="button"
                   onClick={() => setProfileOpen((current) => !current)}
-                  className="flex items-center gap-3 rounded-full border border-slate-200 bg-white/85 px-3 py-2 shadow-soft transition hover:-translate-y-0.5"
+                  className="flex items-center gap-3 rounded-full border border-slate-200/80 bg-white/92 px-3 py-2 shadow-soft transition hover:-translate-y-0.5"
                 >
-                  <div className="grid h-11 w-11 place-items-center rounded-full bg-slate-950 text-sm font-bold text-white">
+                  <div className="grid h-11 w-11 place-items-center rounded-full bg-[linear-gradient(135deg,#0f172a_0%,#1f5c4e_100%)] text-sm font-bold text-white shadow-soft">
                     {site.profile.name
                       .split(" ")
                       .map((part) => part[0])
@@ -2158,11 +2167,11 @@ function App() {
                 </button>
 
                 {profileOpen ? (
-                  <div className="absolute right-0 top-[calc(100%+14px)] z-20 w-80 rounded-[1.8rem] border border-white/80 bg-white/95 p-5 shadow-ambient backdrop-blur-xl">
+                  <div className="executive-surface absolute right-0 top-[calc(100%+14px)] z-20 w-80 rounded-[1.6rem] p-5 backdrop-blur-xl">
                     <p className="text-xs font-semibold uppercase tracking-[0.26em] text-slate-500">
                       {uiText.farmProfileLabel}
                     </p>
-                    <h2 className="mt-3 font-display text-2xl font-bold text-slate-950">
+                    <h2 className="executive-title mt-3 text-2xl font-bold">
                       {site.profile.farm}
                     </h2>
                     <p className="mt-2 text-sm text-slate-600">{translate(site.profile.role)}</p>
@@ -2200,7 +2209,7 @@ function App() {
                     <button
                       type="button"
                       onClick={() => navigateTo("/profile")}
-                      className="mt-4 w-full rounded-2xl bg-slate-950 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
+                      className="mt-4 w-full rounded-2xl bg-[linear-gradient(135deg,#0f172a_0%,#17324d_50%,#1f5c4e_100%)] px-4 py-3 text-sm font-semibold text-white transition hover:brightness-105"
                     >
                       {uiText.manageAccountLabel}
                     </button>
@@ -2224,7 +2233,7 @@ function App() {
           </nav>
         </header>
 
-        <main className="mx-auto mt-8 flex w-full max-w-[88rem] flex-col gap-10 px-0 sm:px-1 lg:px-1">
+        <main className="mx-auto mt-8 flex w-full max-w-[96rem] flex-col gap-10 px-0 sm:px-2 lg:px-2">
           {plannerReminders.length ? (
             <PlannerReminderBanner
               reminders={plannerReminders}
@@ -2341,6 +2350,7 @@ function App() {
       <ChatWidget
         isOpen={chatOpen}
         onToggle={() => setChatOpen((current) => !current)}
+        onClose={() => setChatOpen(false)}
         uiText={uiText.chat}
         selectedLanguage={site.selectedLanguage}
         messages={chatMessages}
@@ -2880,8 +2890,6 @@ function RecommendationsPage({
                 title={uiText.recommendationColumnTitles.inorganic}
                 items={cropRecommendations.inorganic}
                 boxed={false}
-                showPricing={false}
-                showCostStats={false}
                 translate={translate}
               />
             </SurfaceCard>
@@ -2895,32 +2903,8 @@ function RecommendationsPage({
                 title={uiText.recommendationColumnTitles.organic}
                 items={cropRecommendations.organic}
                 boxed={false}
-                showPricing={false}
-                showCostStats={false}
                 translate={translate}
               />
-            </SurfaceCard>
-
-            <SurfaceCard
-              eyebrow={fertilizerSections.costAnalysisTitle || "Cost Analysis"}
-              title={fertilizerSections.costAnalysisTitle || "Cost Analysis"}
-              subtitle={
-                fertilizerSections.costAnalysisSubtitle ||
-                "Estimated spend across chemical correction and organic soil support"
-              }
-            >
-              <div className="grid gap-6">
-                <RecommendationCostGroup
-                  title={uiText.recommendationColumnTitles.inorganic}
-                  items={cropRecommendations.inorganic}
-                  translate={translate}
-                />
-                <RecommendationCostGroup
-                  title={uiText.recommendationColumnTitles.organic}
-                  items={cropRecommendations.organic}
-                  translate={translate}
-                />
-              </div>
             </SurfaceCard>
 
             <SurfaceCard
@@ -2931,7 +2915,7 @@ function RecommendationsPage({
                 "Sustainable and eco-friendly fertilizer options"
               }
             >
-              <div className="grid gap-4">
+              <div className="grid gap-4 lg:grid-cols-2">
                 {organicAlternativeItems.map((item, index) => (
                   <Reveal key={`${item.title}-${item.altFertilizer}`} delay={80 + index * 50}>
                     <article className="hover-lift rounded-[1.9rem] border border-slate-200 bg-white p-5">
@@ -4153,21 +4137,23 @@ function SensorDataPage({
         </div>
       </SurfaceCard>
 
-      <SurfaceCard
-        eyebrow={uiText.realtimePanel.trendTitle}
-        title={translate("NPK movement")}
-        subtitle={uiText.realtimePanel.trendSubtitle}
-      >
-        {realtimeTrend ? <LineChart chart={realtimeTrend} /> : null}
-      </SurfaceCard>
+      <div className="grid gap-6 xl:grid-cols-2">
+        <SurfaceCard
+          eyebrow={uiText.realtimePanel.trendTitle}
+          title={translate("NPK movement")}
+          subtitle={uiText.realtimePanel.trendSubtitle}
+        >
+          {realtimeTrend ? <LineChart chart={realtimeTrend} /> : null}
+        </SurfaceCard>
 
-      <SurfaceCard
-        eyebrow={uiText.realtimePanel.distributionTitle}
-        title={translate("Environmental balance")}
-        subtitle={uiText.realtimePanel.distributionSubtitle}
-      >
-        <DonutChart segments={environmentSegments} translate={translate} />
-      </SurfaceCard>
+        <SurfaceCard
+          eyebrow={uiText.realtimePanel.distributionTitle}
+          title={translate("Environmental balance")}
+          subtitle={uiText.realtimePanel.distributionSubtitle}
+        >
+          <DonutChart segments={environmentSegments} translate={translate} />
+        </SurfaceCard>
+      </div>
 
       <SurfaceCard
         eyebrow={translate("Realtime feed")}
@@ -4269,7 +4255,7 @@ function PageHero({
   stats
 }) {
   return (
-    <section className="hero-shell relative overflow-hidden rounded-[2.5rem] border border-white/70 bg-[linear-gradient(135deg,rgba(255,255,255,0.86),rgba(243,247,241,0.94))] px-6 py-8 shadow-ambient sm:px-8 sm:py-10 lg:px-10 lg:py-12">
+    <section className="hero-shell relative overflow-hidden rounded-[2.5rem] px-6 py-8 sm:px-8 sm:py-10 lg:px-10 lg:py-12">
       <div className="hero-orb hero-orb--green" />
       <div className="hero-orb hero-orb--blue" />
       <div className="relative grid gap-8 xl:grid-cols-[1.2fr_0.8fr] xl:items-end">
@@ -4278,7 +4264,7 @@ function PageHero({
             <p className="hero-badge">{eyebrow}</p>
           </Reveal>
           <Reveal delay={100}>
-            <h2 className="mt-4 max-w-4xl font-display text-4xl font-black tracking-[-0.04em] text-slate-950 sm:text-5xl xl:text-6xl">
+            <h2 className="executive-title mt-4 max-w-4xl text-4xl font-black sm:text-5xl xl:text-6xl">
               {title}
             </h2>
           </Reveal>
@@ -4287,13 +4273,16 @@ function PageHero({
               {description}
             </p>
           </Reveal>
+          <Reveal delay={260}>
+            <div className="title-rule mt-6" />
+          </Reveal>
           <Reveal delay={320}>
             <div className="mt-7 flex flex-wrap gap-3">
               {primaryAction ? (
                 <button
                   type="button"
                   onClick={primaryAction.onClick}
-                  className="rounded-full bg-slate-950 px-5 py-3 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:bg-slate-800"
+                  className="rounded-full bg-[linear-gradient(135deg,#0f172a_0%,#17324d_55%,#1f5c4e_100%)] px-5 py-3 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:brightness-105"
                 >
                   {primaryAction.label}
                 </button>
@@ -4302,7 +4291,7 @@ function PageHero({
                 <button
                   type="button"
                   onClick={secondaryAction.onClick}
-                  className="rounded-full border border-slate-200 bg-white/85 px-5 py-3 text-sm font-semibold text-slate-700 transition hover:-translate-y-0.5 hover:bg-white"
+                  className="rounded-full border border-slate-200/80 bg-white/92 px-5 py-3 text-sm font-semibold text-slate-700 transition hover:-translate-y-0.5 hover:bg-white"
                 >
                   {secondaryAction.label}
                 </button>
@@ -4314,11 +4303,11 @@ function PageHero({
         <div className="grid gap-4">
           {stats.map((item, index) => (
             <Reveal key={item.label} delay={140 + index * 90}>
-              <article className="hover-lift rounded-[1.8rem] border border-white/80 bg-white/88 p-5 shadow-soft backdrop-blur">
+              <article className="executive-surface hover-lift rounded-[1.7rem] p-5 backdrop-blur">
                 <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">
                   {item.label}
                 </p>
-                <h3 className="mt-3 font-display text-3xl font-black tracking-tight text-slate-950">
+                <h3 className="executive-title mt-3 text-3xl font-black">
                   {item.value}
                 </h3>
                 <p className="mt-2 text-sm text-slate-600">{item.detail}</p>
@@ -4333,20 +4322,21 @@ function PageHero({
 
 function SurfaceCard({ eyebrow, title, subtitle, right, children, elevated = false }) {
   return (
-    <section className={`glass-panel p-6 sm:p-7 ${elevated ? "shadow-ambient" : ""}`}>
+    <section className={`glass-panel p-6 sm:p-7 ${elevated ? "shadow-ambient ring-1 ring-slate-200/60" : ""}`}>
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div className="max-w-3xl">
           {eyebrow ? (
-            <p className="text-xs font-semibold uppercase tracking-[0.28em] text-slate-500">
+            <p className="section-kicker">
               {eyebrow}
             </p>
           ) : null}
-          <h2 className="mt-2 font-display text-3xl font-black tracking-tight text-slate-950">
+          <h2 className="executive-title mt-2 text-3xl font-black">
             {title}
           </h2>
           {subtitle ? (
             <p className="mt-3 max-w-3xl text-sm leading-7 text-slate-600">{subtitle}</p>
           ) : null}
+          <div className="title-rule mt-4" />
         </div>
         {right ? <div className="shrink-0">{right}</div> : null}
       </div>
@@ -4357,13 +4347,13 @@ function SurfaceCard({ eyebrow, title, subtitle, right, children, elevated = fal
 
 function HealthSignalCard({ dashboard, translate = (value) => value }) {
   return (
-    <article className="hover-lift overflow-hidden rounded-[2rem] bg-gradient-to-br from-slate-950 via-slate-900 to-emerald-900 p-6 text-white shadow-ambient">
+    <article className="hover-lift overflow-hidden rounded-[2rem] bg-[linear-gradient(135deg,#0f172a_0%,#16253a_48%,#1f5c4e_100%)] p-6 text-white shadow-ambient">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.28em] text-white/55">
             {translate("Soil status")}
           </p>
-          <h3 className="mt-3 font-display text-4xl font-black">
+          <h3 className="mt-3 font-display text-4xl font-black tracking-[-0.03em]">
             {dashboard.overview.soilHealth.score}%
           </h3>
           <p className="mt-3 max-w-md text-sm leading-7 text-white/78">
@@ -4392,11 +4382,11 @@ function HealthSignalCard({ dashboard, translate = (value) => value }) {
 
 function MetricTile({ label, value, tone }) {
   return (
-    <article className={`hover-lift rounded-[1.7rem] border p-5 ${toneBorder(tone)} ${toneSurface(tone)}`}>
+    <article className={`hover-lift rounded-[1.7rem] border p-5 ${toneBorder(tone)} ${toneSurface(tone)} shadow-[0_14px_34px_rgba(15,23,42,0.05)]`}>
       <p className={`text-xs font-semibold uppercase tracking-[0.24em] ${toneText(tone)}`}>
         {label}
       </p>
-      <h3 className="mt-3 font-display text-3xl font-black tracking-tight text-slate-950">
+      <h3 className="executive-title mt-3 text-3xl font-black">
         {value}
       </h3>
     </article>
@@ -4433,7 +4423,7 @@ function LaunchCard({ label, title, description, actionLabel, onClick, tone }) {
         <p className={`text-xs font-semibold uppercase tracking-[0.24em] ${toneText(tone)}`}>
           {label}
         </p>
-        <h3 className="mt-3 font-display text-2xl font-bold text-slate-950">{title}</h3>
+        <h3 className="executive-title mt-3 text-2xl font-bold">{title}</h3>
       </div>
       <p className="text-sm leading-7 text-slate-600">{description}</p>
       <span className="text-sm font-semibold text-slate-950">{actionLabel}</span>
@@ -4450,8 +4440,8 @@ function CropPredictionCard({ crop, selectedCropKey, predictedTag, onSelectCrop,
       onClick={() => onSelectCrop(crop.key)}
       className={`hover-lift rounded-[1.8rem] border p-5 text-left transition ${
         isSelected
-          ? "border-slate-950 bg-slate-950 text-white shadow-soft"
-          : "border-white bg-white/90 hover:border-emerald-200 hover:bg-white"
+          ? "border-slate-900 bg-[linear-gradient(135deg,#0f172a_0%,#17324d_52%,#1f5c4e_100%)] text-white shadow-soft"
+          : "border-slate-200/80 bg-white/92 hover:border-emerald-200 hover:bg-white"
       }`}
     >
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -4463,7 +4453,7 @@ function CropPredictionCard({ crop, selectedCropKey, predictedTag, onSelectCrop,
           >
             {predictedTag} • {translate(crop.family)}
           </p>
-          <h3 className="mt-2 font-display text-2xl font-bold">{translate(crop.label)}</h3>
+          <h3 className="executive-title mt-2 text-2xl font-bold">{translate(crop.label)}</h3>
         </div>
         <span
           className={`rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] ${
@@ -4930,6 +4920,8 @@ function RecommendationColumn({
   showCostStats = true,
   translate = (value) => value
 }) {
+  const totals = showCostStats ? buildRecommendationCostTotals(items) : null;
+
   return (
     <article className={boxed ? "rounded-[1.9rem] border border-slate-200 bg-white p-5" : ""}>
       <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">{title}</p>
@@ -4964,37 +4956,20 @@ function RecommendationColumn({
             </p>
           </article>
         ))}
+        {showCostStats && items.length ? (
+          <article className="rounded-[1.7rem] border border-slate-200 bg-slate-950 p-5 text-white">
+            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-white/60">
+              {translate("Total plan")}
+            </p>
+            <h3 className="mt-3 font-display text-2xl font-bold">{title}</h3>
+            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              <MiniStat label={translate("Cost / acre")} value={totals.estimated} dark />
+              <MiniStat label={translate("Total plan")} value={totals.total} dark />
+            </div>
+          </article>
+        ) : null}
       </div>
     </article>
-  );
-}
-
-function RecommendationCostGroup({ title, items = [], translate = (value) => value }) {
-  return (
-    <div className="grid gap-4">
-      <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">{title}</p>
-      {items.map((item) => (
-        <article key={`${title}-${item.title}`} className="rounded-[1.7rem] border border-slate-100 bg-slate-50 p-4">
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div>
-              <h3 className="font-display text-xl font-bold text-slate-950">{item.title}</h3>
-              <p className="mt-2 text-sm font-semibold text-slate-700">{item.fertilizer}</p>
-            </div>
-            <span className={`status-pill status-pill--${priorityTone(item.priority)}`}>
-              {item.priority}
-            </span>
-          </div>
-          <div className="mt-4 grid gap-3 sm:grid-cols-3">
-            <MiniStat label={translate("Price range")} value={item.priceRange} />
-            {item.brandExamples?.length ? (
-              <MiniStat label={translate("Brand examples")} value={item.brandExamples.join(", ")} />
-            ) : null}
-            <MiniStat label={translate("Cost / acre")} value={item.costSummary.estimated} />
-            <MiniStat label={translate("Total plan")} value={item.costSummary.total} />
-          </div>
-        </article>
-      ))}
-    </div>
   );
 }
 
@@ -5283,6 +5258,7 @@ function LineChart({ chart }) {
 function ChatWidget({
   isOpen,
   onToggle,
+  onClose,
   uiText,
   selectedLanguage,
   messages,
@@ -5292,13 +5268,16 @@ function ChatWidget({
   onInputChange,
   onSubmit
 }) {
+  const widgetRef = useRef(null);
   const recognitionRef = useRef(null);
+  const spokenMessageRef = useRef("");
   const pendingTranscriptRef = useRef("");
   const submitOnEndRef = useRef(false);
   const onInputChangeRef = useRef(onInputChange);
   const onSubmitRef = useRef(onSubmit);
   const [micAvailable, setMicAvailable] = useState(false);
   const [micListening, setMicListening] = useState(false);
+  const [availableVoices, setAvailableVoices] = useState([]);
   const [voiceStatus, setVoiceStatus] = useState(uiText.micIdleLabel || "Voice chat ready");
   const quickActions = [
     {
@@ -5319,6 +5298,54 @@ function ChatWidget({
     onInputChangeRef.current = onInputChange;
     onSubmitRef.current = onSubmit;
   }, [onInputChange, onSubmit]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return undefined;
+    }
+
+    function handlePointerDown(event) {
+      if (isOpen && widgetRef.current && !widgetRef.current.contains(event.target)) {
+        onClose();
+      }
+    }
+
+    function handleKeyDown(event) {
+      if (event.key === "Escape" && isOpen) {
+        onClose();
+      }
+    }
+
+    document.addEventListener("pointerdown", handlePointerDown);
+    document.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDown);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isOpen, onClose]);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || !window.speechSynthesis) {
+      return undefined;
+    }
+
+    const synth = window.speechSynthesis;
+    const syncVoices = () => {
+      const voices = synth.getVoices();
+
+      if (voices.length) {
+        setAvailableVoices(voices);
+      }
+    };
+
+    syncVoices();
+    synth.addEventListener?.("voiceschanged", syncVoices);
+
+    return () => {
+      synth.removeEventListener?.("voiceschanged", syncVoices);
+    };
+  }, []);
 
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -5405,32 +5432,41 @@ function ChatWidget({
     }
 
     const latestMessage = messages[messages.length - 1];
+    const speechKey = `${messages.length}:${latestMessage?.role || ""}:${latestMessage?.text || ""}`;
 
-    if (!latestMessage || latestMessage.role !== "assistant" || micListening) {
+    if (!isOpen || !latestMessage || latestMessage.role !== "assistant" || micListening) {
       return undefined;
     }
 
+    if (spokenMessageRef.current === speechKey) {
+      return undefined;
+    }
+
+    spokenMessageRef.current = speechKey;
     window.speechSynthesis.cancel();
 
-    const utterance = new SpeechSynthesisUtterance(latestMessage.text);
+    const utterance = new SpeechSynthesisUtterance(normalizeSpeechText(latestMessage.text));
     const speechLocale = getSpeechLocale(selectedLanguage);
     utterance.lang = speechLocale;
+    utterance.rate = getSpeechRate(selectedLanguage);
+    utterance.pitch = 1;
+    utterance.volume = 1;
 
-    const voices = window.speechSynthesis.getVoices();
-    const matchedVoice = voices.find((voice) =>
-      voice.lang.toLowerCase().startsWith(speechLocale.toLowerCase().split("-")[0])
-    );
+    const matchedVoice = pickSpeechVoice(availableVoices, speechLocale);
 
     if (matchedVoice) {
       utterance.voice = matchedVoice;
     }
 
-    window.speechSynthesis.speak(utterance);
+    const timeoutId = window.setTimeout(() => {
+      window.speechSynthesis.speak(utterance);
+    }, 60);
 
     return () => {
+      window.clearTimeout(timeoutId);
       window.speechSynthesis.cancel();
     };
-  }, [messages, micListening, selectedLanguage]);
+  }, [availableVoices, isOpen, messages, micListening, selectedLanguage]);
 
   function handleMicToggle() {
     if (!micAvailable || !recognitionRef.current || busy) {
@@ -5465,7 +5501,7 @@ function ChatWidget({
   }
 
   return (
-    <div className="fixed bottom-5 right-5 z-30 flex flex-col items-end gap-3">
+    <div ref={widgetRef} className="fixed bottom-5 right-5 z-30 flex flex-col items-end gap-3">
       {isOpen ? (
         <div className="glass-panel w-[min(430px,calc(100vw-2.5rem))] overflow-hidden">
           <div className="border-b border-white/60 bg-slate-950 px-5 py-4 text-white">
@@ -5607,6 +5643,61 @@ function getSpeechLocale(languageCode) {
   };
 
   return byLanguage[languageCode] || "en-IN";
+}
+
+function normalizeSpeechText(value) {
+  return String(value || "")
+    .replace(/\bNPK\b/g, "N P K")
+    .replace(/\bpH\b/g, "P H")
+    .replace(/\buS\/cm\b/gi, "micro siemens per centimeter")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function getSpeechRate(languageCode) {
+  return languageCode === "en" ? 0.94 : 0.88;
+}
+
+function scoreSpeechVoice(voice, speechLocale) {
+  const targetLanguage = speechLocale.toLowerCase();
+  const targetPrefix = targetLanguage.split("-")[0];
+  const voiceLanguage = String(voice?.lang || "").toLowerCase();
+  const voiceName = String(voice?.name || "").toLowerCase();
+  let score = 0;
+
+  if (voiceLanguage === targetLanguage) {
+    score += 6;
+  } else if (voiceLanguage.startsWith(targetPrefix)) {
+    score += 4;
+  }
+
+  if (
+    /google|microsoft|samantha|zira|heera|lekha|neural|natural|enhanced|premium/i.test(
+      voiceName
+    )
+  ) {
+    score += 3;
+  }
+
+  if (voice?.default) {
+    score += 1;
+  }
+
+  if (voice?.localService) {
+    score += 1;
+  }
+
+  return score;
+}
+
+function pickSpeechVoice(voices, speechLocale) {
+  if (!Array.isArray(voices) || voices.length === 0) {
+    return null;
+  }
+
+  return [...voices].sort(
+    (left, right) => scoreSpeechVoice(right, speechLocale) - scoreSpeechVoice(left, speechLocale)
+  )[0];
 }
 
 function Reveal({ children, delay = 0 }) {

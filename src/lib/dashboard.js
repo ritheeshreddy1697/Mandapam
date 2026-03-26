@@ -178,6 +178,10 @@ export function estimateSunlightLux() {
 
 export function getRecommendationContext(dashboard) {
   const soilData = dashboard?.overview?.soilData || [];
+  const soilTemperature = Number.parseFloat(extractNumericValue(soilData[6]?.value));
+  const environmentTemperature = Number.isFinite(soilTemperature)
+    ? soilTemperature + 1.3
+    : Number.parseFloat(extractNumericValue(dashboard?.realtime?.metrics?.[2]?.value));
 
   return {
     nitrogen: Number.parseFloat(extractNumericValue(soilData[0]?.value)),
@@ -188,6 +192,7 @@ export function getRecommendationContext(dashboard) {
     ),
     humidity: Number.parseFloat(extractNumericValue(dashboard?.realtime?.metrics?.[1]?.value)),
     temperature: Number.parseFloat(extractNumericValue(soilData[6]?.value)),
+    environmentTemperature,
     ph: Number.parseFloat(extractNumericValue(soilData[3]?.value)),
     conductivity: Number.parseFloat(extractNumericValue(soilData[4]?.value)),
     score: Number.parseFloat(dashboard?.overview?.soilHealth?.score) || 0
@@ -210,10 +215,70 @@ export function calculateRangeFit(value, range) {
   return clamp(1 - distance / span, 0, 1);
 }
 
+const WEATHER_PROFILE_RANGES = {
+  default: {
+    humidityRange: [50, 74],
+    airTemperatureRange: [18, 32]
+  },
+  paddy: {
+    humidityRange: [68, 88],
+    airTemperatureRange: [22, 34]
+  },
+  wheat: {
+    humidityRange: [40, 62],
+    airTemperatureRange: [14, 28]
+  },
+  corn: {
+    humidityRange: [50, 72],
+    airTemperatureRange: [20, 34]
+  },
+  pulse: {
+    humidityRange: [42, 64],
+    airTemperatureRange: [20, 32]
+  },
+  oilseed: {
+    humidityRange: [44, 68],
+    airTemperatureRange: [18, 32]
+  },
+  fiber: {
+    humidityRange: [52, 76],
+    airTemperatureRange: [24, 36]
+  },
+  spice: {
+    humidityRange: [58, 84],
+    airTemperatureRange: [22, 34]
+  },
+  fruitingVegetable: {
+    humidityRange: [56, 76],
+    airTemperatureRange: [20, 34]
+  },
+  leafyVegetable: {
+    humidityRange: [60, 82],
+    airTemperatureRange: [16, 28]
+  },
+  rootVegetable: {
+    humidityRange: [52, 74],
+    airTemperatureRange: [16, 28]
+  }
+};
+
+function getCropWeatherProfile(profile) {
+  return WEATHER_PROFILE_RANGES[profile.thresholdProfileKey] || WEATHER_PROFILE_RANGES.default;
+}
+
+function calculateWeatherFit(value, range) {
+  if (!Number.isFinite(value)) {
+    return 0.68;
+  }
+
+  return calculateRangeFit(value, range);
+}
+
 function buildCropFitReason(profile, context) {
   const reasons = [];
   const thresholdProfile =
     CROP_THRESHOLD_PROFILES[profile.thresholdProfileKey] || CROP_THRESHOLD_PROFILES.default;
+  const weatherProfile = getCropWeatherProfile(profile);
 
   if (calculateRangeFit(context.moisture, profile.moistureRange) >= 0.95) {
     reasons.push(`soil moisture ${formatNumber(context.moisture, 1)}% fits this crop well`);
@@ -229,6 +294,21 @@ function buildCropFitReason(profile, context) {
     );
   }
 
+  if (
+    calculateWeatherFit(
+      context.environmentTemperature,
+      weatherProfile.airTemperatureRange
+    ) >= 0.95
+  ) {
+    reasons.push(
+      `weather temperature ${formatNumber(context.environmentTemperature, 1)}°C is favorable`
+    );
+  }
+
+  if (calculateWeatherFit(context.humidity, weatherProfile.humidityRange) >= 0.95) {
+    reasons.push(`humidity ${formatNumber(context.humidity, 1)}% is supportive right now`);
+  }
+
   if (context.score >= profile.minHealthScore) {
     reasons.push(`soil health ${formatNumber(context.score, 0)}% is strong enough for planning`);
   }
@@ -241,7 +321,7 @@ function buildCropFitReason(profile, context) {
   }
 
   if (reasons.length === 0) {
-    return `${profile.label} stays workable if you manage irrigation and fertilizer timing carefully.`;
+    return `${profile.label} stays workable if you manage irrigation, fertilizer timing, and weather swings carefully.`;
   }
 
   return `${reasons.slice(0, 2).join(" and ")}.`;
@@ -255,10 +335,16 @@ function buildCropRankings(dashboard) {
     .map(([key, profile], index) => {
       const thresholdProfile =
         CROP_THRESHOLD_PROFILES[profile.thresholdProfileKey] || CROP_THRESHOLD_PROFILES.default;
+      const weatherProfile = getCropWeatherProfile(profile);
       const moistureFit = calculateRangeFit(context.moisture, profile.moistureRange);
       const phFit = calculateRangeFit(context.ph, profile.phRange);
       const temperatureFit = calculateRangeFit(context.temperature, profile.temperatureRange);
       const conductivityFit = calculateRangeFit(context.conductivity, profile.conductivityRange);
+      const airTemperatureFit = calculateWeatherFit(
+        context.environmentTemperature,
+        weatherProfile.airTemperatureRange
+      );
+      const humidityFit = calculateWeatherFit(context.humidity, weatherProfile.humidityRange);
       const nitrogenFit = calculateRangeFit(context.nitrogen, [
         0,
         thresholdProfile.nutrients.N.mediumMax
@@ -274,12 +360,14 @@ function buildCropRankings(dashboard) {
       const nutrientFit = (nitrogenFit + phosphorusFit + potassiumFit) / 3;
       const healthFit = clamp(context.score / Math.max(profile.minHealthScore, 1), 0, 1.2);
       const fitScore =
-        moistureFit * 0.24 +
-        phFit * 0.16 +
-        temperatureFit * 0.16 +
+        moistureFit * 0.2 +
+        phFit * 0.14 +
+        temperatureFit * 0.12 +
         conductivityFit * 0.08 +
-        nutrientFit * 0.2 +
-        healthFit * 0.16;
+        nutrientFit * 0.18 +
+        healthFit * 0.14 +
+        airTemperatureFit * 0.08 +
+        humidityFit * 0.06;
 
       return {
         key,
@@ -465,8 +553,34 @@ function buildPlannerCostSummary(rateMinKg, rateMaxKg, priceMinPerKg, priceMaxPe
   const totalMax = estimatedMax * DEFAULT_FIELD_AREA;
 
   return {
+    estimatedMin,
+    estimatedMax,
+    totalMin,
+    totalMax,
     estimated: `${formatCurrencyRange(estimatedMin, estimatedMax)} / acre`,
     total: `${formatCurrencyRange(totalMin, totalMax)} / ${DEFAULT_FIELD_AREA} acres`
+  };
+}
+
+export function buildRecommendationCostTotals(items = []) {
+  const totals = items.reduce(
+    (current, item) => ({
+      estimatedMin: current.estimatedMin + toNumber(item?.costSummary?.estimatedMin),
+      estimatedMax: current.estimatedMax + toNumber(item?.costSummary?.estimatedMax),
+      totalMin: current.totalMin + toNumber(item?.costSummary?.totalMin),
+      totalMax: current.totalMax + toNumber(item?.costSummary?.totalMax)
+    }),
+    {
+      estimatedMin: 0,
+      estimatedMax: 0,
+      totalMin: 0,
+      totalMax: 0
+    }
+  );
+
+  return {
+    estimated: `${formatCurrencyRange(totals.estimatedMin, totals.estimatedMax)} / acre`,
+    total: `${formatCurrencyRange(totals.totalMin, totals.totalMax)} / ${DEFAULT_FIELD_AREA} acres`
   };
 }
 
