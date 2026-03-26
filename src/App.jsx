@@ -1,4 +1,4 @@
-import { startTransition, useEffect, useRef, useState } from "react";
+import { startTransition, useEffect, useMemo, useRef, useState } from "react";
 import {
   PRIMARY_CROP_OPTIONS,
   VEGETABLE_CROP_OPTIONS,
@@ -44,6 +44,10 @@ const NAV_ITEM_CONFIG = [
   {
     path: "/sensor-data",
     label: "Sensor Data"
+  },
+  {
+    path: "/storages",
+    label: "Storages"
   }
 ];
 
@@ -1248,6 +1252,10 @@ function normalizePathname(pathname) {
     return "/sensor-data";
   }
 
+  if (normalized === "/storages") {
+    return "/storages";
+  }
+
   if (normalized === "/profile") {
     return "/profile";
   }
@@ -1332,6 +1340,14 @@ function formatArrivals(arrivals, unit = "Metric Tonnes") {
   return `${formatNumber(arrivals, 1)} ${unit}`;
 }
 
+function formatDistanceLabel(distanceKm) {
+  if (distanceKm === null || distanceKm === undefined || distanceKm === "") {
+    return "Distance unavailable";
+  }
+
+  return `${formatNumber(distanceKm, 1)} km away`;
+}
+
 function App() {
   const [site, setSite] = useState(null);
   const [dashboard, setDashboard] = useState(null);
@@ -1358,6 +1374,18 @@ function App() {
   const [priceReport, setPriceReport] = useState(null);
   const [priceReportLoading, setPriceReportLoading] = useState(false);
   const [priceReportError, setPriceReportError] = useState("");
+  const [storageFilterState, setStorageFilterState] = useState("");
+  const [storageFilterDistrict, setStorageFilterDistrict] = useState("");
+  const [nearbyStorages, setNearbyStorages] = useState([]);
+  const [nearbyStoragesLoading, setNearbyStoragesLoading] = useState(false);
+  const [nearbyStoragesError, setNearbyStoragesError] = useState("");
+  const [nearbyStorageMeta, setNearbyStorageMeta] = useState(null);
+  const [storageUserPosition, setStorageUserPosition] = useState(null);
+  const [storageLocationStatus, setStorageLocationStatus] = useState("idle");
+  const [areaStorages, setAreaStorages] = useState([]);
+  const [areaStoragesLoading, setAreaStoragesLoading] = useState(false);
+  const [areaStoragesError, setAreaStoragesError] = useState("");
+  const [areaStorageMeta, setAreaStorageMeta] = useState(null);
   const [ppqsAdvisories, setPpqsAdvisories] = useState({});
   const [schemeFilterState, setSchemeFilterState] = useState("");
   const [schemeInsights, setSchemeInsights] = useState(null);
@@ -1365,6 +1393,8 @@ function App() {
   const [schemeInsightsError, setSchemeInsightsError] = useState("");
   const [profileSaving, setProfileSaving] = useState(false);
   const profileRef = useRef(null);
+  const nearbyStorageRequestKeyRef = useRef("");
+  const areaStorageRequestKeyRef = useRef("");
 
   const activeLanguage = site?.selectedLanguage || "en";
   const profileLocationKey = buildLocationKey(site?.profile?.state, site?.profile?.district);
@@ -1372,22 +1402,41 @@ function App() {
   const uiText = translateContent(site?.uiText || FALLBACK_UI_TEXT, activeLanguage);
   const selectedCrop = getCropProfile(selectedCropKey);
   const cropUi = uiText.recommendationWorkspace.cropSelection;
-  const navItems = NAV_ITEM_CONFIG.map((item) => ({
-    ...item,
-    label: translate(item.label)
-  }));
-  const actionPlannerOptions = ACTION_PLANNER_OPTIONS.map((item) => ({
-    ...item,
-    label: translate(item.label)
-  }));
-  const basePredictedCrops = dashboard ? buildPredictedCropSuggestions(dashboard) : [];
-  const basePredictedCropSections = dashboard
-    ? buildPredictedCropSections(dashboard)
-    : { cereals: [], vegetable: null };
-  const agmarknetCropKeys = collectAgmarknetCropKeys(
-    selectedCropKey,
-    basePredictedCrops,
-    basePredictedCropSections
+  const navItems = useMemo(
+    () =>
+      NAV_ITEM_CONFIG.map((item) => ({
+        ...item,
+        label: translate(item.label)
+      })),
+    [activeLanguage]
+  );
+  const actionPlannerOptions = useMemo(
+    () =>
+      ACTION_PLANNER_OPTIONS.map((item) => ({
+        ...item,
+        label: translate(item.label)
+      })),
+    [activeLanguage]
+  );
+  const basePredictedCrops = useMemo(
+    () => (dashboard ? buildPredictedCropSuggestions(dashboard) : []),
+    [dashboard]
+  );
+  const basePredictedCropSections = useMemo(
+    () =>
+      dashboard
+        ? buildPredictedCropSections(dashboard)
+        : { cereals: [], vegetable: null },
+    [dashboard]
+  );
+  const agmarknetCropKeys = useMemo(
+    () =>
+      collectAgmarknetCropKeys(
+        selectedCropKey,
+        basePredictedCrops,
+        basePredictedCropSections
+      ),
+    [basePredictedCropSections, basePredictedCrops, selectedCropKey]
   );
   const predictedCrops = basePredictedCrops
     .map((item) => mergeCropMarketInsight(item, marketInsights[item.key]))
@@ -1413,6 +1462,7 @@ function App() {
   const selectedCropInsight = selectedCropKey ? marketInsights[selectedCropKey] : null;
   const selectedCropAdvisories = selectedCropKey ? ppqsAdvisories[selectedCropKey] : null;
   const priceDistrictOptions = getDistrictOptionsForState(agmarknetLocations, priceFilterState);
+  const storageDistrictOptions = getDistrictOptionsForState(agmarknetLocations, storageFilterState);
   const weatherSnapshot = dashboard
     ? translateContent(buildWeatherSnapshot(dashboard, uiText), activeLanguage)
     : [];
@@ -1498,6 +1548,8 @@ function App() {
   useEffect(() => {
     setPriceFilterState(site?.profile?.state || "");
     setPriceFilterDistrict(site?.profile?.district || "");
+    setStorageFilterState(site?.profile?.state || "");
+    setStorageFilterDistrict(site?.profile?.district || "");
     setSchemeFilterState(site?.profile?.state || "");
   }, [site?.profile?.state, site?.profile?.district]);
 
@@ -1511,6 +1563,15 @@ function App() {
   }, [priceDistrictOptions, priceFilterDistrict]);
 
   useEffect(() => {
+    if (
+      storageFilterDistrict &&
+      !storageDistrictOptions.some((district) => district.name === storageFilterDistrict)
+    ) {
+      setStorageFilterDistrict("");
+    }
+  }, [storageDistrictOptions, storageFilterDistrict]);
+
+  useEffect(() => {
     const missingCropKeys = agmarknetCropKeys.filter(
       (cropKey) => !marketInsights[cropKey] && !marketInsightAttempts[cropKey]
     );
@@ -1520,6 +1581,14 @@ function App() {
     }
 
     let cancelled = false;
+
+    setMarketInsightAttempts((current) => {
+      const nextState = { ...current };
+      missingCropKeys.forEach((cropKey) => {
+        nextState[cropKey] = true;
+      });
+      return nextState;
+    });
 
     async function loadAgmarknetPrices() {
       try {
@@ -1545,16 +1614,6 @@ function App() {
         }));
       } catch {
         // Ignore Agmarknet issues and keep the static fallback prices in place.
-      } finally {
-        if (!cancelled) {
-          setMarketInsightAttempts((current) => {
-            const nextState = { ...current };
-            missingCropKeys.forEach((cropKey) => {
-              nextState[cropKey] = true;
-            });
-            return nextState;
-          });
-        }
       }
     }
 
@@ -1715,6 +1774,167 @@ function App() {
   }, [activeToolKey, schemeFilterState]);
 
   useEffect(() => {
+    if (
+      pathname !== "/storages" ||
+      storageUserPosition ||
+      storageLocationStatus !== "idle"
+    ) {
+      return;
+    }
+
+    if (typeof window === "undefined" || !window.navigator?.geolocation) {
+      setStorageLocationStatus("unsupported");
+      return;
+    }
+
+    setStorageLocationStatus("requesting");
+
+    window.navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setStorageUserPosition({
+          latitude: Number(position.coords.latitude.toFixed(6)),
+          longitude: Number(position.coords.longitude.toFixed(6))
+        });
+        setStorageLocationStatus("ready");
+      },
+      () => {
+        setStorageLocationStatus("denied");
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 12000,
+        maximumAge: 10 * 60 * 1000
+      }
+    );
+  }, [pathname, storageLocationStatus, storageUserPosition]);
+
+  useEffect(() => {
+    if (pathname !== "/storages" || !storageUserPosition) {
+      return;
+    }
+
+    const requestKey = `${storageUserPosition.latitude}:${storageUserPosition.longitude}`;
+
+    if (nearbyStorageRequestKeyRef.current === requestKey) {
+      return;
+    }
+
+    nearbyStorageRequestKeyRef.current = requestKey;
+    let cancelled = false;
+
+    async function loadNearbyStorages() {
+      setNearbyStoragesLoading(true);
+      setNearbyStoragesError("");
+
+      try {
+        const { response, payload } = await requestJson("/api/storages/nearby", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            latitude: storageUserPosition.latitude,
+            longitude: storageUserPosition.longitude,
+            limit: 6
+          })
+        });
+
+        if (!response.ok) {
+          throw new Error(payload.error || "Unable to load nearby storages.");
+        }
+
+        if (!cancelled) {
+          setNearbyStorages(payload.items || []);
+          setNearbyStorageMeta(payload);
+        }
+      } catch (loadError) {
+        if (!cancelled) {
+          setNearbyStorages([]);
+          setNearbyStorageMeta(null);
+          setNearbyStoragesError(
+            resolveAppErrorMessage(loadError, "Unable to load nearby storages.")
+          );
+        }
+      } finally {
+        if (!cancelled) {
+          setNearbyStoragesLoading(false);
+        }
+      }
+    }
+
+    loadNearbyStorages();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [pathname, storageUserPosition]);
+
+  useEffect(() => {
+    if (pathname !== "/storages" || !storageFilterState) {
+      setAreaStorages([]);
+      setAreaStorageMeta(null);
+      setAreaStoragesError("");
+      areaStorageRequestKeyRef.current = "";
+      return;
+    }
+
+    const requestKey = `${storageFilterState}:${storageFilterDistrict || "*"}`;
+
+    if (areaStorageRequestKeyRef.current === requestKey) {
+      return;
+    }
+
+    areaStorageRequestKeyRef.current = requestKey;
+    let cancelled = false;
+
+    async function loadAreaStorages() {
+      setAreaStoragesLoading(true);
+      setAreaStoragesError("");
+
+      try {
+        const { response, payload } = await requestJson("/api/storages/area", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            stateName: storageFilterState,
+            districtName: storageFilterDistrict,
+            limit: 10
+          })
+        });
+
+        if (!response.ok) {
+          throw new Error(payload.error || "Unable to load storages for this area.");
+        }
+
+        if (!cancelled) {
+          setAreaStorages(payload.items || []);
+          setAreaStorageMeta(payload);
+        }
+      } catch (loadError) {
+        if (!cancelled) {
+          setAreaStorages([]);
+          setAreaStorageMeta(null);
+          setAreaStoragesError(
+            resolveAppErrorMessage(loadError, "Unable to load storages for this area.")
+          );
+        }
+      } finally {
+        if (!cancelled) {
+          setAreaStoragesLoading(false);
+        }
+      }
+    }
+
+    loadAreaStorages();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [pathname, storageFilterDistrict, storageFilterState]);
+
+  useEffect(() => {
     function handlePopState() {
       setPathname(normalizePathname(window.location.pathname));
       setProfileOpen(false);
@@ -1742,6 +1962,8 @@ function App() {
           ? "Recommendations"
           : pathname === "/sensor-data"
             ? "Sensor Data"
+            : pathname === "/storages"
+              ? "Storages"
             : "Overview";
 
     document.title = `${site?.brand || "AgriCure"} | ${translate(pageTitle)}`;
@@ -2330,6 +2552,30 @@ function App() {
               realtimeTrend={realtimeTrend}
               environmentSegments={environmentSegments}
               onNavigate={navigateTo}
+              translate={translate}
+            />
+          ) : null}
+
+          {pathname === "/storages" ? (
+            <StoragePage
+              selectedCrop={selectedCrop}
+              agmarknetLocations={agmarknetLocations}
+              storageFilterState={storageFilterState}
+              storageFilterDistrict={storageFilterDistrict}
+              storageDistrictOptions={storageDistrictOptions}
+              nearbyStorages={nearbyStorages}
+              nearbyStoragesLoading={nearbyStoragesLoading}
+              nearbyStoragesError={nearbyStoragesError}
+              nearbyStorageMeta={nearbyStorageMeta}
+              storageUserPosition={storageUserPosition}
+              storageLocationStatus={storageLocationStatus}
+              areaStorages={areaStorages}
+              areaStoragesLoading={areaStoragesLoading}
+              areaStoragesError={areaStoragesError}
+              areaStorageMeta={areaStorageMeta}
+              onNavigate={navigateTo}
+              onStorageStateChange={setStorageFilterState}
+              onStorageDistrictChange={setStorageFilterDistrict}
               translate={translate}
             />
           ) : null}
@@ -3653,6 +3899,311 @@ function PriceInsightPanel({
         )}
       </div>
     </SurfaceCard>
+  );
+}
+
+function StoragePage({
+  selectedCrop,
+  agmarknetLocations,
+  storageFilterState,
+  storageFilterDistrict,
+  storageDistrictOptions,
+  nearbyStorages,
+  nearbyStoragesLoading,
+  nearbyStoragesError,
+  nearbyStorageMeta,
+  storageUserPosition,
+  storageLocationStatus,
+  areaStorages,
+  areaStoragesLoading,
+  areaStoragesError,
+  areaStorageMeta,
+  onNavigate,
+  onStorageStateChange,
+  onStorageDistrictChange,
+  translate = (value) => value
+}) {
+  const selectedAreaLabel =
+    [storageFilterDistrict, storageFilterState].filter(Boolean).join(", ") ||
+    translate("Choose state");
+  const nearbyLocationLabel = storageUserPosition
+    ? `${storageUserPosition.latitude}, ${storageUserPosition.longitude}`
+    : translate("Waiting for location");
+  const sourceNote =
+    nearbyStorageMeta?.source?.note ||
+    areaStorageMeta?.source?.note ||
+    "Price and availability are only shown when the public source publishes them.";
+  const districtFallbackApplied = Boolean(areaStorageMeta?.query?.districtFallbackApplied);
+
+  return (
+    <div className="page-transition grid gap-8">
+      <PageHero
+        eyebrow={translate("Storages")}
+        title={
+          <>
+            {translate("Find nearby")}
+            <span className="bg-gradient-to-r from-cyan-500 via-sky-500 to-emerald-500 bg-clip-text text-transparent">
+              {` ${translate("cold storages")}`}
+            </span>
+            .
+          </>
+        }
+        description={translate("Use your live location or select a state and district to load a small set of real cold storage locations without pulling heavy datasets.")}
+        primaryAction={{
+          label: translate("Open Recommendations"),
+          onClick: () => onNavigate("/recommendations")
+        }}
+        secondaryAction={{
+          label: translate("Back to Overview"),
+          onClick: () => onNavigate("/")
+        }}
+        stats={[
+          {
+            label: translate("Nearby storages"),
+            value: String(nearbyStorages.length),
+            detail: nearbyLocationLabel
+          },
+          {
+            label: translate("Selected area"),
+            value: selectedAreaLabel,
+            detail: translate("State and district filter")
+          },
+          {
+            label: translate("Crop context"),
+            value: translate(selectedCrop?.label || "General storage"),
+            detail: translate("Storage search note")
+          }
+        ]}
+      />
+
+      <SurfaceCard
+        eyebrow={translate("Nearby cold storage")}
+        title={translate("Nearest storages from your location")}
+        subtitle={translate(sourceNote)}
+        elevated
+      >
+        {storageLocationStatus === "requesting" || nearbyStoragesLoading ? (
+          <div className="rounded-[1.8rem] border border-slate-200 bg-white p-6 text-sm text-slate-600">
+            {translate("Fetching your location and loading nearby storages...")}
+          </div>
+        ) : null}
+
+        {storageLocationStatus === "unsupported" ? (
+          <div className="rounded-[1.8rem] border border-amber-200 bg-amber-50 p-6 text-sm text-amber-800">
+            {translate("This browser does not support location access. Use the state and district filters below instead.")}
+          </div>
+        ) : null}
+
+        {storageLocationStatus === "denied" ? (
+          <div className="rounded-[1.8rem] border border-amber-200 bg-amber-50 p-6 text-sm text-amber-800">
+            {translate("Location access was blocked, so nearby storages could not be loaded. You can still browse storages by state and district below.")}
+          </div>
+        ) : null}
+
+        {!nearbyStoragesLoading && nearbyStoragesError ? (
+          <div className="rounded-[1.8rem] border border-rose-200 bg-rose-50 p-6 text-sm text-rose-700">
+            {translate(nearbyStoragesError)}
+          </div>
+        ) : null}
+
+        {!nearbyStoragesLoading &&
+        storageLocationStatus === "ready" &&
+        !nearbyStoragesError &&
+        nearbyStorages.length === 0 ? (
+          <div className="rounded-[1.8rem] border border-dashed border-slate-300 bg-slate-50 p-6 text-sm text-slate-600">
+            {translate("No nearby cold storages were returned for this location right now. Try the state and district filter below.")}
+          </div>
+        ) : null}
+
+        {nearbyStorages.length ? (
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            {nearbyStorages.map((storage, index) => (
+              <Reveal key={storage.id} delay={80 + index * 45}>
+                <StorageCard storage={storage} showDistance translate={translate} />
+              </Reveal>
+            ))}
+          </div>
+        ) : null}
+      </SurfaceCard>
+
+      <SurfaceCard
+        eyebrow={translate("Area filter")}
+        title={translate("Browse storages by state and district")}
+        subtitle={translate("The list stays intentionally small and only shows published data points from the source.")}
+        elevated
+      >
+        <div className="grid gap-6">
+          <div className="grid gap-4 lg:grid-cols-[0.9fr_1.1fr]">
+            <article className="rounded-[1.9rem] border border-slate-200 bg-white p-5">
+              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">
+                {translate("Location filters")}
+              </p>
+              <div className="mt-4 grid gap-4">
+                <label className="grid gap-2 text-sm">
+                  <span className="font-semibold text-slate-700">{translate("Select state")}</span>
+                  <select
+                    value={storageFilterState}
+                    onChange={(event) => {
+                      onStorageStateChange(event.target.value);
+                      onStorageDistrictChange("");
+                    }}
+                    className="rounded-[1.3rem] border border-slate-200 bg-white px-4 py-3 font-semibold text-slate-900 outline-none"
+                  >
+                    <option value="">{translate("Choose state")}</option>
+                    {agmarknetLocations.map((state) => (
+                      <option key={state.id || state.name} value={state.name}>
+                        {state.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <label className="grid gap-2 text-sm">
+                  <span className="font-semibold text-slate-700">{translate("Select district")}</span>
+                  <select
+                    value={storageFilterDistrict}
+                    onChange={(event) => onStorageDistrictChange(event.target.value)}
+                    disabled={!storageFilterState}
+                    className="rounded-[1.3rem] border border-slate-200 bg-white px-4 py-3 font-semibold text-slate-900 outline-none disabled:bg-slate-50 disabled:text-slate-400"
+                  >
+                    <option value="">{translate("All districts in selected state")}</option>
+                    {storageDistrictOptions.map((district) => (
+                      <option key={district.id || district.name} value={district.name}>
+                        {district.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+            </article>
+
+            <article className="rounded-[1.9rem] bg-slate-950 p-5 text-white">
+              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-white/60">
+                {translate("Selected search")}
+              </p>
+              <h3 className="mt-3 font-display text-3xl font-bold">{selectedAreaLabel}</h3>
+              <p className="mt-3 text-sm leading-7 text-white/80">
+                {translate(sourceNote)}
+              </p>
+              <div className="mt-5 grid gap-3 sm:grid-cols-2">
+                <MiniStat
+                  label={translate("Storages shown")}
+                  value={String(areaStorages.length)}
+                  dark
+                />
+                <MiniStat
+                  label={translate("Area source")}
+                  value={areaStorageMeta?.query?.label || translate("Nominatim + OpenStreetMap")}
+                  dark
+                />
+              </div>
+            </article>
+          </div>
+
+          {!storageFilterState ? (
+            <div className="rounded-[1.8rem] border border-dashed border-slate-300 bg-slate-50 p-6 text-sm text-slate-600">
+              {translate("Select a state and optional district to load storages in that area.")}
+            </div>
+          ) : areaStoragesLoading ? (
+            <div className="rounded-[1.8rem] border border-slate-200 bg-white p-6 text-sm text-slate-600">
+              {translate("Loading storages for the selected area...")}
+            </div>
+          ) : areaStoragesError ? (
+            <div className="rounded-[1.8rem] border border-rose-200 bg-rose-50 p-6 text-sm text-rose-700">
+              {translate(areaStoragesError)}
+            </div>
+          ) : areaStorages.length === 0 ? (
+            <div className="rounded-[1.8rem] border border-dashed border-slate-300 bg-slate-50 p-6 text-sm text-slate-600">
+              {translate("No storages were returned for this state and district right now.")}
+            </div>
+          ) : (
+            <div className="grid gap-4">
+              {districtFallbackApplied ? (
+                <div className="rounded-[1.6rem] border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+                  {translate("No storage data was found for the selected district, so the list is showing storages from the whole selected state.")}
+                </div>
+              ) : null}
+
+              <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                {areaStorages.map((storage, index) => (
+                  <Reveal key={storage.id} delay={90 + index * 45}>
+                    <StorageCard storage={storage} translate={translate} />
+                  </Reveal>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      </SurfaceCard>
+    </div>
+  );
+}
+
+function StorageCard({ storage, showDistance = false, translate = (value) => value }) {
+  return (
+    <article className="hover-lift rounded-[1.8rem] border border-slate-200 bg-white p-5">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">
+            {translate("Cold storage")}
+          </p>
+          <h3 className="mt-2 font-display text-2xl font-bold text-slate-950">
+            {storage.name}
+          </h3>
+        </div>
+        {showDistance ? (
+          <span className="status-pill status-pill--sky">
+            {formatDistanceLabel(storage.distanceKm)}
+          </span>
+        ) : null}
+      </div>
+
+      <p className="mt-3 text-sm leading-7 text-slate-600">
+        {storage.address || translate("Address not published")}
+      </p>
+
+      <div className="mt-4 grid gap-3 sm:grid-cols-3">
+        <MiniStat label={translate("Price")} value={storage.priceLabel} />
+        <MiniStat label={translate("Availability")} value={storage.availabilityLabel} />
+        <MiniStat
+          label={translate("Capacity")}
+          value={storage.capacityLabel || translate("Not publicly listed")}
+        />
+      </div>
+
+      <div className="mt-4 flex flex-wrap items-center gap-3 text-sm text-slate-600">
+        {storage.phone ? <span>{storage.phone}</span> : null}
+        {storage.website ? (
+          <a
+            href={storage.website}
+            target="_blank"
+            rel="noreferrer"
+            className="font-semibold text-cyan-700 hover:text-cyan-800"
+          >
+            {translate("Website")}
+          </a>
+        ) : null}
+      </div>
+
+      <div className="mt-5 flex flex-wrap gap-3">
+        <a
+          href={storage.mapsUrl}
+          target="_blank"
+          rel="noreferrer"
+          className="rounded-full bg-slate-950 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800"
+        >
+          {translate("Location")}
+        </a>
+        <a
+          href={storage.sourceUrl}
+          target="_blank"
+          rel="noreferrer"
+          className="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50"
+        >
+          {translate("Source")}
+        </a>
+      </div>
+    </article>
   );
 }
 

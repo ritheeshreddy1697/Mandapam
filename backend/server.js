@@ -26,6 +26,7 @@ const {
 } = require("./agmarknet");
 const { getPpqsAdvisoriesForCrop } = require("./ppqs");
 const { getVikaspediaSchemeInsights } = require("./vikaspedia");
+const { getNearbyStorages, getAreaStorages } = require("./storages");
 
 loadEnv();
 const PORT = process.env.PORT || 3000;
@@ -676,6 +677,10 @@ function logWarning(scope, error) {
   console.warn(`[server:${scope}] ${message}`);
 }
 
+function isTimeoutLikeError(error) {
+  return /timed out|timeout/i.test(error?.message || "");
+}
+
 async function requestListener(req, res) {
   const requestUrl = new URL(req.url, `http://${req.headers.host}`);
   const pathname = requestUrl.pathname;
@@ -826,6 +831,15 @@ async function requestListener(req, res) {
         insights
       });
     } catch (error) {
+      if (isTimeoutLikeError(error)) {
+        sendJson(res, 200, {
+          source: "agmarknet",
+          degraded: true,
+          insights: {}
+        });
+        return;
+      }
+
       logWarning("agmarknet-prices", error);
       sendRouteError(res, error, "Unable to load Agmarknet crop prices.");
     }
@@ -914,6 +928,109 @@ async function requestListener(req, res) {
     } catch (error) {
       logWarning("vikaspedia-schemes", error);
       sendRouteError(res, error, "Unable to load government schemes.");
+    }
+    return;
+  }
+
+  if (pathname === "/api/storages/nearby" && req.method === "POST") {
+    try {
+      const payload = await parseJsonBody(req);
+      const latitude = readNumericField(
+        pickField(payload, ["latitude", "lat"]),
+        "latitude",
+        {
+          required: true
+        }
+      );
+      const longitude = readNumericField(
+        pickField(payload, ["longitude", "lon", "lng"]),
+        "longitude",
+        {
+          required: true
+        }
+      );
+      const limit = readNumericField(pickField(payload, ["limit"]), "limit");
+      const storages = await getNearbyStorages({
+        latitude,
+        longitude,
+        limit
+      });
+
+      sendJson(res, 200, storages);
+    } catch (error) {
+      if (isTimeoutLikeError(error)) {
+        sendJson(res, 200, {
+          query: {
+            mode: "nearby"
+          },
+          items: [],
+          degraded: true,
+          source: {
+            facilities: "OpenStreetMap",
+            geocoding: "Browser geolocation",
+            note: "Storage lookup timed out, so no nearby results were returned right now."
+          }
+        });
+        return;
+      }
+
+      logWarning("storages-nearby", error);
+      sendRouteError(res, error, "Unable to load nearby storages.");
+    }
+    return;
+  }
+
+  if (pathname === "/api/storages/area" && req.method === "POST") {
+    let stateName = "";
+    let districtName = "";
+
+    try {
+      const payload = await parseJsonBody(req);
+      stateName = readTextField(
+        pickField(payload, ["stateName", "state"]),
+        "stateName",
+        {
+          required: true,
+          maxLength: 80
+        }
+      );
+      districtName = readTextField(
+        pickField(payload, ["districtName", "district"]),
+        "districtName",
+        {
+          allowNull: true,
+          maxLength: 80
+        }
+      );
+      const limit = readNumericField(pickField(payload, ["limit"]), "limit");
+      const storages = await getAreaStorages({
+        stateName,
+        districtName,
+        limit
+      });
+
+      sendJson(res, 200, storages);
+    } catch (error) {
+      if (isTimeoutLikeError(error)) {
+        sendJson(res, 200, {
+          query: {
+            stateName,
+            districtName,
+            mode: "area"
+          },
+          items: [],
+          degraded: true,
+          source: {
+            facilities: "OpenStreetMap",
+            geocoding: "Nominatim",
+            note: "Storage lookup timed out, so no area results were returned right now."
+          }
+        });
+        return;
+      }
+
+      logWarning("storages-area", error);
+      sendRouteError(res, error, "Unable to load storages for this area.");
     }
     return;
   }
