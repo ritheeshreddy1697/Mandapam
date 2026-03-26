@@ -1,5 +1,5 @@
-const APP_CACHE_VERSION = "agricure-app-v1";
-const RUNTIME_CACHE_VERSION = "agricure-runtime-v1";
+const APP_CACHE_VERSION = "agricure-app-v2";
+const RUNTIME_CACHE_VERSION = "agricure-runtime-v2";
 const APP_SHELL_URLS = ["/", "/manifest.webmanifest", "/app-icon.svg", "/icon-192.png", "/icon-512.png"];
 
 self.addEventListener("install", (event) => {
@@ -44,7 +44,10 @@ self.addEventListener("fetch", (event) => {
       fetch(request)
         .then((response) => {
           const responseClone = response.clone();
-          caches.open(APP_CACHE_VERSION).then((cache) => cache.put("/", responseClone));
+          caches.open(APP_CACHE_VERSION).then((cache) => {
+            cache.put(request, responseClone);
+            cache.put("/", response.clone());
+          });
           return response;
         })
         .catch(async () => {
@@ -57,11 +60,7 @@ self.addEventListener("fetch", (event) => {
 
   event.respondWith(
     caches.match(request).then((cachedResponse) => {
-      if (cachedResponse) {
-        return cachedResponse;
-      }
-
-      return fetch(request).then((response) => {
+      const networkFetch = fetch(request).then((response) => {
         if (!response.ok) {
           return response;
         }
@@ -70,6 +69,15 @@ self.addEventListener("fetch", (event) => {
         caches.open(RUNTIME_CACHE_VERSION).then((cache) => cache.put(request, responseClone));
         return response;
       });
+
+      if (cachedResponse) {
+        event.waitUntil(
+          networkFetch.catch(() => null)
+        );
+        return cachedResponse;
+      }
+
+      return networkFetch;
     })
   );
 });
