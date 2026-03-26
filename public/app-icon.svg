@@ -1,0 +1,29 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="512" height="512" rx="136" fill="url(#bg)" />
+  <rect x="72" y="72" width="368" height="368" rx="112" fill="url(#panel)" fill-opacity="0.22" stroke="#FFFFFF" stroke-opacity="0.22" />
+  <path d="M180 311C180 250.801 228.801 202 289 202H332C332 262.199 283.199 311 223 311H180Z" fill="url(#leaf)" />
+  <path d="M171 336C171 263.651 229.651 205 302 205V220C237.935 220 186 271.935 186 336H171Z" fill="#F6F3EC" fill-opacity="0.92" />
+  <path d="M178 154H237.304C283.482 154 321.58 190.929 324.826 236.302H265.522C219.344 236.302 181.246 199.373 178 154Z" fill="url(#sprout)" />
+  <circle cx="359" cy="156" r="22" fill="#F8D48A" fill-opacity="0.92" />
+  <path d="M333 328H372" stroke="#F6F3EC" stroke-width="18" stroke-linecap="round" />
+  <path d="M352 309V347" stroke="#F6F3EC" stroke-width="18" stroke-linecap="round" />
+  <defs>
+    <linearGradient id="bg" x1="64" y1="48" x2="438" y2="464" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#11372D" />
+      <stop offset="0.52" stop-color="#1E5C4E" />
+      <stop offset="1" stop-color="#D8B56A" />
+    </linearGradient>
+    <linearGradient id="panel" x1="256" y1="72" x2="256" y2="440" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFFFFF" stop-opacity="0.46" />
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0.08" />
+    </linearGradient>
+    <linearGradient id="leaf" x1="180" y1="202" x2="332" y2="311" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#A9E17A" />
+      <stop offset="1" stop-color="#3FA36F" />
+    </linearGradient>
+    <linearGradient id="sprout" x1="178" y1="154" x2="324.826" y2="236.302" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#F7F2E7" />
+      <stop offset="1" stop-color="#DCEFD8" />
+    </linearGradient>
+  </defs>
+</svg>

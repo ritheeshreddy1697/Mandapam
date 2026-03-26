@@ -1,5 +1,6 @@
 const http = require("http");
 const fs = require("fs");
+const os = require("os");
 const path = require("path");
 const { URL } = require("url");
 const { loadEnv } = require("./env");
@@ -30,6 +31,7 @@ const { getNearbyStorages, getAreaStorages } = require("./storages");
 
 loadEnv();
 const PORT = process.env.PORT || 3000;
+const HOST = process.env.HOST || "0.0.0.0";
 const distDir = path.join(__dirname, "..", "dist");
 const clientDir = distDir;
 const clientIndexPath = path.join(clientDir, "index.html");
@@ -40,6 +42,7 @@ const mimeTypes = {
   ".js": "application/javascript; charset=UTF-8",
   ".mjs": "application/javascript; charset=UTF-8",
   ".json": "application/json; charset=UTF-8",
+  ".webmanifest": "application/manifest+json; charset=UTF-8",
   ".svg": "image/svg+xml; charset=UTF-8",
   ".png": "image/png",
   ".jpg": "image/jpeg",
@@ -659,8 +662,14 @@ function serveFile(res, filePath) {
     }
 
     const extension = path.extname(filePath).toLowerCase();
+    const cacheControlHeader =
+      extension === ".html" || extension === ".webmanifest" || path.basename(filePath) === "sw.js"
+        ? "no-cache"
+        : "public, max-age=31536000, immutable";
+
     res.writeHead(200, {
-      "Content-Type": mimeTypes[extension] || "application/octet-stream"
+      "Content-Type": mimeTypes[extension] || "application/octet-stream",
+      "Cache-Control": cacheControlHeader
     });
     res.end(content);
   });
@@ -1057,10 +1066,29 @@ function createServer() {
   return http.createServer(requestListener);
 }
 
+function getNetworkUrls(port) {
+  return Object.values(os.networkInterfaces())
+    .flat()
+    .filter(
+      (address) =>
+        address &&
+        address.family === "IPv4" &&
+        !address.internal
+    )
+    .map((address) => `http://${address.address}:${port}`);
+}
+
 if (require.main === module) {
   const server = createServer();
-  server.listen(PORT, () => {
-    console.log(`Agricure server running on http://localhost:${PORT}`);
+  server.listen(PORT, HOST, () => {
+    const localUrl = `http://${HOST === "0.0.0.0" ? "localhost" : HOST}:${PORT}`;
+    const networkUrls = HOST === "0.0.0.0" ? getNetworkUrls(PORT) : [];
+
+    console.log(`Agricure server running on ${localUrl}`);
+
+    if (networkUrls.length > 0) {
+      console.log(`Open on your phone using ${networkUrls[0]}`);
+    }
   });
 }
 

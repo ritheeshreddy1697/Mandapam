@@ -23,6 +23,16 @@ npm run dev
 
 The Vite dev server runs on `http://localhost:5173` and proxies `/api/*` requests to the backend on `http://localhost:3000`.
 
+## App install support
+
+This project now includes Progressive Web App support:
+
+- install from supported desktop and mobile browsers
+- standalone app display with app metadata and icons
+- offline shell caching for previously visited screens and static assets
+
+For production app behavior, build the frontend first and serve it with `npm start`.
+
 ## Project structure
 
 - `backend/server.js` for the Node server
