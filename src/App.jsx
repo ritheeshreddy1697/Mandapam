@@ -62,6 +62,63 @@ const ACTION_PLANNER_OPTIONS = [
   }))
 ];
 
+const STORAGE_REQUEST_CACHE_TTL_MS = 30 * 1000;
+const storageRequestCache = new Map();
+
+function buildStorageRequestCacheKey(pathname, payload) {
+  return `${pathname}:${JSON.stringify(payload)}`;
+}
+
+function readCachedStorageRequest(cacheKey) {
+  const cachedEntry = storageRequestCache.get(cacheKey);
+
+  if (!cachedEntry) {
+    return null;
+  }
+
+  if (Date.now() - cachedEntry.createdAt > STORAGE_REQUEST_CACHE_TTL_MS) {
+    storageRequestCache.delete(cacheKey);
+    return null;
+  }
+
+  return cachedEntry.promise;
+}
+
+async function requestCachedStorageJson(pathname, payload) {
+  const cacheKey = buildStorageRequestCacheKey(pathname, payload);
+  const cachedRequest = readCachedStorageRequest(cacheKey);
+
+  if (cachedRequest) {
+    return cachedRequest;
+  }
+
+  const requestPromise = requestJson(pathname, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify(payload)
+  })
+    .then((result) => {
+      storageRequestCache.set(cacheKey, {
+        createdAt: Date.now(),
+        promise: Promise.resolve(result)
+      });
+      return result;
+    })
+    .catch((error) => {
+      storageRequestCache.delete(cacheKey);
+      throw error;
+    });
+
+  storageRequestCache.set(cacheKey, {
+    createdAt: Date.now(),
+    promise: requestPromise
+  });
+
+  return requestPromise;
+}
+
 const FALLBACK_UI_TEXT = {
   welcomePrefix: "Welcome,",
   farmProfileLabel: "Farm Profile",
@@ -1827,16 +1884,10 @@ function App() {
       setNearbyStoragesError("");
 
       try {
-        const { response, payload } = await requestJson("/api/storages/nearby", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({
-            latitude: storageUserPosition.latitude,
-            longitude: storageUserPosition.longitude,
-            limit: 6
-          })
+        const { response, payload } = await requestCachedStorageJson("/api/storages/nearby", {
+          latitude: storageUserPosition.latitude,
+          longitude: storageUserPosition.longitude,
+          limit: 6
         });
 
         if (!response.ok) {
@@ -1892,16 +1943,10 @@ function App() {
       setAreaStoragesError("");
 
       try {
-        const { response, payload } = await requestJson("/api/storages/area", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({
-            stateName: storageFilterState,
-            districtName: storageFilterDistrict,
-            limit: 10
-          })
+        const { response, payload } = await requestCachedStorageJson("/api/storages/area", {
+          stateName: storageFilterState,
+          districtName: storageFilterDistrict,
+          limit: 10
         });
 
         if (!response.ok) {

@@ -1,6 +1,7 @@
 const https = require("https");
 const {
   GOVERNMENT_API_CACHE_TTL_MS,
+  getGovernmentApiCacheEntry,
   getOrFetchGovernmentApiValue
 } = require("./govt-cache");
 
@@ -9,14 +10,22 @@ const NHB_MIS_URL = "https://www.nhb.gov.in/onlineclient/csrrptmis.aspx";
 const NHB_SOURCE_URL = "https://www.nhb.gov.in/onlineclient/csrrptmis.aspx";
 const STORAGE_RESULT_LIMIT = 12;
 const INDIA_COUNTRY_CODE = "in";
+const NOMINATIM_MIN_REQUEST_INTERVAL_MS = 1200;
+const NOMINATIM_MAX_RETRY_DELAY_MS = 5000;
 const REQUEST_HEADERS = {
   Accept: "application/json",
   "User-Agent": "AgriCure/1.0 (storage lookup)"
 };
 
-function createStorageError(message) {
+let nominatimRequestGate = Promise.resolve();
+let nominatimNextRequestAt = 0;
+let nominatimRateLimitedUntil = 0;
+
+function createStorageError(message, options = {}) {
   const error = new Error(message);
-  error.statusCode = 502;
+  error.statusCode = options.statusCode || 502;
+  error.upstreamStatusCode = options.upstreamStatusCode || null;
+  error.responseHeaders = options.responseHeaders || null;
   return error;
 }
 
@@ -24,7 +33,75 @@ function requestText(url, options = {}) {
   return requestResponse(url, options).then((response) => response.body);
 }
 
-function requestResponse(url, options = {}) {
+function isNominatimUrl(url) {
+  return String(url || "").startsWith(NOMINATIM_BASE_URL);
+}
+
+function isNominatimRateLimitError(error) {
+  return error?.upstreamStatusCode === 429;
+}
+
+function isNominatimCoolingDown() {
+  return nominatimRateLimitedUntil > Date.now();
+}
+
+function sleep(delayMs) {
+  return new Promise((resolve) => {
+    setTimeout(resolve, delayMs);
+  });
+}
+
+function parseRetryAfterMs(headers = {}) {
+  const retryAfterValue = headers?.["retry-after"];
+
+  if (!retryAfterValue) {
+    return null;
+  }
+
+  const directSeconds = Number.parseInt(retryAfterValue, 10);
+
+  if (Number.isFinite(directSeconds) && directSeconds >= 0) {
+    return directSeconds * 1000;
+  }
+
+  const retryAt = Date.parse(retryAfterValue);
+
+  if (Number.isNaN(retryAt)) {
+    return null;
+  }
+
+  return Math.max(retryAt - Date.now(), 0);
+}
+
+async function waitForNominatimTurn() {
+  const previousGate = nominatimRequestGate;
+  let releaseGate = () => {};
+
+  nominatimRequestGate = new Promise((resolve) => {
+    releaseGate = resolve;
+  });
+
+  await previousGate;
+
+  try {
+    const waitMs =
+      Math.max(nominatimNextRequestAt, nominatimRateLimitedUntil) - Date.now();
+
+    if (waitMs > 0) {
+      await sleep(waitMs);
+    }
+
+    nominatimNextRequestAt = Date.now() + NOMINATIM_MIN_REQUEST_INTERVAL_MS;
+  } finally {
+    releaseGate();
+  }
+}
+
+function buildNominatimCacheKey(url) {
+  return `storages:nominatim:${Buffer.from(String(url || "")).toString("base64")}`;
+}
+
+function requestResponseOnce(url, options = {}) {
   const method = options.method || "GET";
   const body = options.body || "";
   const headers = {
@@ -53,7 +130,10 @@ function requestResponse(url, options = {}) {
         response.on("end", () => {
           if (response.statusCode < 200 || response.statusCode >= 300) {
             reject(
-              createStorageError(`Storage lookup request failed with status ${response.statusCode}.`)
+              createStorageError(`Storage lookup request failed with status ${response.statusCode}.`, {
+                upstreamStatusCode: response.statusCode,
+                responseHeaders: response.headers
+              })
             );
             return;
           }
@@ -80,6 +160,50 @@ function requestResponse(url, options = {}) {
   });
 }
 
+async function requestResponse(url, options = {}) {
+  const shouldThrottleNominatim = isNominatimUrl(url);
+  const maximumAttempts = shouldThrottleNominatim ? 2 : 1;
+
+  for (let attempt = 0; attempt < maximumAttempts; attempt += 1) {
+    if (shouldThrottleNominatim) {
+      await waitForNominatimTurn();
+    }
+
+    try {
+      const response = await requestResponseOnce(url, options);
+
+      if (shouldThrottleNominatim) {
+        nominatimRateLimitedUntil = 0;
+      }
+
+      return response;
+    } catch (error) {
+      if (!shouldThrottleNominatim || !isNominatimRateLimitError(error)) {
+        throw error;
+      }
+
+      const retryDelayMs = Math.max(
+        NOMINATIM_MIN_REQUEST_INTERVAL_MS,
+        Math.min(
+          parseRetryAfterMs(error.responseHeaders) || NOMINATIM_MIN_REQUEST_INTERVAL_MS,
+          NOMINATIM_MAX_RETRY_DELAY_MS
+        )
+      );
+
+      nominatimRateLimitedUntil = Math.max(
+        nominatimRateLimitedUntil,
+        Date.now() + retryDelayMs
+      );
+
+      if (attempt === maximumAttempts - 1) {
+        throw error;
+      }
+    }
+  }
+
+  throw createStorageError("Storage lookup failed.");
+}
+
 async function requestJson(url, options = {}) {
   const raw = await requestText(url, options);
 
@@ -88,6 +212,30 @@ async function requestJson(url, options = {}) {
   } catch {
     throw createStorageError("Storage lookup returned invalid JSON.");
   }
+}
+
+async function requestNominatimJson(url) {
+  const cacheKey = buildNominatimCacheKey(url);
+  const cachedEntry = getGovernmentApiCacheEntry(cacheKey, GOVERNMENT_API_CACHE_TTL_MS);
+
+  if (cachedEntry) {
+    return cachedEntry.value;
+  }
+
+  if (isNominatimCoolingDown()) {
+    throw createStorageError(
+      "Storage lookup is temporarily rate limited by the public map service.",
+      {
+        upstreamStatusCode: 429
+      }
+    );
+  }
+
+  return getOrFetchGovernmentApiValue(
+    cacheKey,
+    () => requestJson(url),
+    GOVERNMENT_API_CACHE_TTL_MS
+  );
 }
 
 function normalizeText(value) {
@@ -610,7 +758,9 @@ async function fetchNominatimStorages({
     params.set("bounded", "1");
   }
 
-  const payload = await requestJson(`${NOMINATIM_BASE_URL}/search?${params.toString()}`);
+  const payload = await requestNominatimJson(
+    `${NOMINATIM_BASE_URL}/search?${params.toString()}`
+  );
   const items = Array.isArray(payload) ? payload : [];
 
   return uniqueStorages(
@@ -654,7 +804,9 @@ async function geocodeArea(query) {
     countrycodes: INDIA_COUNTRY_CODE,
     q: query
   });
-  const payload = await requestJson(`${NOMINATIM_BASE_URL}/search?${params.toString()}`);
+  const payload = await requestNominatimJson(
+    `${NOMINATIM_BASE_URL}/search?${params.toString()}`
+  );
   const match = Array.isArray(payload) ? payload[0] : null;
 
   if (!match) {
@@ -676,6 +828,38 @@ async function geocodeArea(query) {
     viewbox,
     label: match.display_name || query
   };
+}
+
+async function geocodeAreaOrNull(query) {
+  if (isNominatimCoolingDown()) {
+    return null;
+  }
+
+  try {
+    return await geocodeArea(query);
+  } catch (error) {
+    if (isNominatimRateLimitError(error)) {
+      return null;
+    }
+
+    throw error;
+  }
+}
+
+async function fetchNominatimStoragesOrEmpty(options) {
+  if (isNominatimCoolingDown()) {
+    return [];
+  }
+
+  try {
+    return await fetchNominatimStorages(options);
+  } catch (error) {
+    if (isNominatimRateLimitError(error)) {
+      return [];
+    }
+
+    throw error;
+  }
 }
 
 async function getNhpStateOptions() {
@@ -753,7 +937,7 @@ async function getNearbyStorages({ latitude, longitude, limit = 6 }) {
     cacheKey,
     async () => {
       const radiusMeters = 25000;
-      const items = await fetchNominatimStorages({
+      const items = await fetchNominatimStoragesOrEmpty({
         query: "cold storage",
         latitude,
         longitude,
@@ -794,11 +978,11 @@ async function getAreaStorages({ stateName, districtName, limit = 10 }) {
       let districtFallbackApplied = false;
 
       if (districtName) {
-        const districtArea = await geocodeArea(districtQueryLabel);
+        const districtArea = await geocodeAreaOrNull(districtQueryLabel);
 
         if (districtArea) {
           queryMeta = districtArea;
-          items = await fetchNominatimStorages({
+          items = await fetchNominatimStoragesOrEmpty({
             query: "cold storage",
             viewbox: districtArea.viewbox || undefined,
             latitude: districtArea.latitude,
@@ -809,7 +993,7 @@ async function getAreaStorages({ stateName, districtName, limit = 10 }) {
         }
 
         if (items.length === 0) {
-          items = await fetchNominatimStorages({
+          items = await fetchNominatimStoragesOrEmpty({
             query: `cold storage in ${districtQueryLabel}`,
             limit: numericLimit
           });
@@ -821,7 +1005,7 @@ async function getAreaStorages({ stateName, districtName, limit = 10 }) {
         });
 
         if (items.length === 0) {
-          items = await fetchNominatimStorages({
+          items = await fetchNominatimStoragesOrEmpty({
             query: `cold storage ${districtQueryLabel}`,
             limit: numericLimit
           });
@@ -833,11 +1017,11 @@ async function getAreaStorages({ stateName, districtName, limit = 10 }) {
         }
 
         if (items.length === 0) {
-          const stateArea = await geocodeArea(stateQueryLabel);
+          const stateArea = await geocodeAreaOrNull(stateQueryLabel);
 
           if (stateArea) {
             queryMeta = stateArea;
-            items = await fetchNominatimStorages({
+            items = await fetchNominatimStoragesOrEmpty({
               query: "cold storage",
               viewbox: stateArea.viewbox || undefined,
               latitude: stateArea.latitude,
@@ -848,7 +1032,7 @@ async function getAreaStorages({ stateName, districtName, limit = 10 }) {
           }
 
           if (items.length === 0) {
-            items = await fetchNominatimStorages({
+            items = await fetchNominatimStoragesOrEmpty({
               query: `cold storage in ${stateQueryLabel}`,
               limit: numericLimit
             });
@@ -860,11 +1044,11 @@ async function getAreaStorages({ stateName, districtName, limit = 10 }) {
           districtFallbackApplied = true;
         }
       } else {
-        const stateArea = await geocodeArea(stateQueryLabel);
+        const stateArea = await geocodeAreaOrNull(stateQueryLabel);
 
         if (stateArea) {
           queryMeta = stateArea;
-          items = await fetchNominatimStorages({
+          items = await fetchNominatimStoragesOrEmpty({
             query: "cold storage",
             viewbox: stateArea.viewbox || undefined,
             latitude: stateArea.latitude,
@@ -875,7 +1059,7 @@ async function getAreaStorages({ stateName, districtName, limit = 10 }) {
         }
 
         if (items.length === 0) {
-          items = await fetchNominatimStorages({
+          items = await fetchNominatimStoragesOrEmpty({
             query: `cold storage in ${stateQueryLabel}`,
             limit: numericLimit
           });
