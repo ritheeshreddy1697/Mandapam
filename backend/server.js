@@ -28,6 +28,7 @@ const {
 const { getPpqsAdvisoriesForCrop } = require("./ppqs");
 const { getVikaspediaSchemeInsights } = require("./vikaspedia");
 const { getNearbyStorages, getAreaStorages } = require("./storages");
+const { getOfficialSeedVarieties } = require("./seed-varieties");
 
 loadEnv();
 const PORT = process.env.PORT || 3000;
@@ -937,6 +938,22 @@ async function requestListener(req, res) {
     } catch (error) {
       logWarning("vikaspedia-schemes", error);
       sendRouteError(res, error, "Unable to load government schemes.");
+    }
+    return;
+  }
+
+  if (pathname === "/api/seeds/official-varieties" && req.method === "POST") {
+    try {
+      const payload = await parseJsonBody(req);
+      const cropKey = readTextField(pickField(payload, ["cropKey"]), "cropKey", {
+        required: true,
+        maxLength: 60
+      });
+
+      sendJson(res, 200, getOfficialSeedVarieties(cropKey));
+    } catch (error) {
+      logWarning("official-seed-varieties", error);
+      sendRouteError(res, error, "Unable to load official seed varieties.");
     }
     return;
   }

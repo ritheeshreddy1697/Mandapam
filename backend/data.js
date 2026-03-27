@@ -121,7 +121,7 @@ const defaultUiText = {
         title: "Seed Variety Recommendation",
         description: "Choose the best seed varieties for maximum yield",
         tone: "teal",
-        interactive: false
+        interactive: true
       },
       {
         key: "schemes",

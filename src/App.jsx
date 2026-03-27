@@ -1529,6 +1529,9 @@ function App() {
   const [schemeInsights, setSchemeInsights] = useState(null);
   const [schemeInsightsLoading, setSchemeInsightsLoading] = useState(false);
   const [schemeInsightsError, setSchemeInsightsError] = useState("");
+  const [seedVarietyInsights, setSeedVarietyInsights] = useState(null);
+  const [seedVarietyLoading, setSeedVarietyLoading] = useState(false);
+  const [seedVarietyError, setSeedVarietyError] = useState("");
   const [profileSaving, setProfileSaving] = useState(false);
   const profileRef = useRef(null);
   const nearbyStorageRequestKeyRef = useRef("");
@@ -1619,6 +1622,23 @@ function App() {
         activeLanguage
       )
     : null;
+  const activeWorkspaceTool = uiText.recommendationWorkspace.tools.find(
+    (tool) => tool.key === activeToolKey
+  );
+  const workspaceToolModel =
+    toolModel ||
+    (activeWorkspaceTool
+      ? {
+          title: activeWorkspaceTool.title,
+          badge: activeWorkspaceTool.badge,
+          subtitle: activeWorkspaceTool.description,
+          mode: "dynamic",
+          cards: [],
+          checklistTitle: translate("Recommendations"),
+          checklist: [],
+          note: ""
+        }
+      : null);
   const cropSpecificRows = translateContent(
     buildCropSpecificTableRows(dashboard?.recommendations?.tableRows || [], selectedCropKey, uiText),
     activeLanguage
@@ -1916,6 +1936,59 @@ function App() {
       cancelled = true;
     };
   }, [activeToolKey, schemeFilterState]);
+
+  useEffect(() => {
+    if (activeToolKey !== "seed" || !selectedCropKey) {
+      setSeedVarietyInsights(null);
+      setSeedVarietyLoading(false);
+      setSeedVarietyError("");
+      return;
+    }
+
+    let cancelled = false;
+
+    async function loadSeedVarieties() {
+      setSeedVarietyLoading(true);
+      setSeedVarietyError("");
+
+      try {
+        const { response, payload } = await requestJson("/api/seeds/official-varieties", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            cropKey: selectedCropKey
+          })
+        });
+
+        if (!response.ok) {
+          throw new Error(payload.error || "Unable to load official seed varieties.");
+        }
+
+        if (!cancelled) {
+          setSeedVarietyInsights(payload || null);
+        }
+      } catch (loadError) {
+        if (!cancelled) {
+          setSeedVarietyInsights(null);
+          setSeedVarietyError(
+            resolveAppErrorMessage(loadError, "Unable to load official seed varieties.")
+          );
+        }
+      } finally {
+        if (!cancelled) {
+          setSeedVarietyLoading(false);
+        }
+      }
+    }
+
+    loadSeedVarieties();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [activeToolKey, selectedCropKey]);
 
   useEffect(() => {
     if (
@@ -2663,7 +2736,7 @@ function App() {
               predictedCrops={predictedCrops}
               activeToolKey={activeToolKey}
               cropSpecificRows={cropSpecificRows}
-              toolModel={toolModel}
+              toolModel={workspaceToolModel}
               agmarknetLocations={agmarknetLocations}
               priceFilterState={priceFilterState}
               priceFilterDistrict={priceFilterDistrict}
@@ -2674,6 +2747,9 @@ function App() {
               schemeInsights={schemeInsights}
               schemeInsightsLoading={schemeInsightsLoading}
               schemeInsightsError={schemeInsightsError}
+              seedVarietyInsights={seedVarietyInsights}
+              seedVarietyLoading={seedVarietyLoading}
+              seedVarietyError={seedVarietyError}
               onNavigate={navigateTo}
               translate={translate}
               onPrimaryCropChange={handlePrimaryCropChange}
@@ -3078,6 +3154,9 @@ function RecommendationsPage({
   schemeInsights,
   schemeInsightsLoading,
   schemeInsightsError,
+  seedVarietyInsights,
+  seedVarietyLoading,
+  seedVarietyError,
   onNavigate,
   translate,
   onPrimaryCropChange,
@@ -3090,6 +3169,7 @@ function RecommendationsPage({
 }) {
   const topOrganic = cropRecommendations.organic[0];
   const topInorganic = cropRecommendations.inorganic[0];
+  const workspaceToolModel = toolModel;
   const fertilizerSections = uiText.recommendationWorkspace?.fertilizer?.sections || {};
   const cerealPredictions = predictedCropSections?.cereals || [];
   const vegetablePrediction = predictedCropSections?.vegetable || null;
@@ -3324,7 +3404,7 @@ function RecommendationsPage({
                 <button
                   type="button"
                   onClick={() => onSelectCrop(predictedCrops[0].key)}
-                  className="mt-5 rounded-full bg-slate-950 px-5 py-3 text-sm font-semibold text-white"
+                  className="accent-button mt-5 rounded-full px-5 py-3 text-sm font-semibold transition"
                 >
                   {translate("Use best-fit crop")}
                 </button>
@@ -3334,8 +3414,8 @@ function RecommendationsPage({
         </SurfaceCard>
       </section>
 
-      {selectedCrop && toolModel ? (
-        toolModel.mode === "fertilizer" ? (
+      {selectedCrop && workspaceToolModel ? (
+        workspaceToolModel.mode === "fertilizer" ? (
           <div className="grid gap-6">
             <SurfaceCard
               eyebrow={toolModel.badge}
@@ -3499,9 +3579,18 @@ function RecommendationsPage({
               </div>
             </SurfaceCard>
           </div>
+        ) : activeToolKey === "seed" ? (
+          <SeedVarietyPanel
+            toolModel={workspaceToolModel}
+            selectedCrop={selectedCrop}
+            seedVarietyInsights={seedVarietyInsights}
+            seedVarietyLoading={seedVarietyLoading}
+            seedVarietyError={seedVarietyError}
+            translate={translate}
+          />
         ) : activeToolKey === "price" ? (
           <PriceInsightPanel
-            toolModel={toolModel}
+            toolModel={workspaceToolModel}
             selectedCrop={selectedCrop}
             agmarknetLocations={agmarknetLocations}
             priceFilterState={priceFilterState}
@@ -3516,7 +3605,7 @@ function RecommendationsPage({
           />
         ) : activeToolKey === "schemes" ? (
           <SchemeInsightsPanel
-            toolModel={toolModel}
+            toolModel={workspaceToolModel}
             agmarknetLocations={agmarknetLocations}
             schemeFilterState={schemeFilterState}
             schemeInsights={schemeInsights}
@@ -3527,18 +3616,18 @@ function RecommendationsPage({
           />
         ) : (
           <SurfaceCard
-            eyebrow={toolModel.badge}
-            title={toolModel.title}
-            subtitle={toolModel.subtitle}
+            eyebrow={workspaceToolModel.badge}
+            title={workspaceToolModel.title}
+            subtitle={workspaceToolModel.subtitle}
             elevated
           >
             <div className="grid gap-6">
-              {toolModel.gallery?.length ? (
-                <PestGalleryPanel items={toolModel.gallery} translate={translate} />
+              {workspaceToolModel.gallery?.length ? (
+                <PestGalleryPanel items={workspaceToolModel.gallery} translate={translate} />
               ) : null}
 
               <div className="grid gap-4">
-                {toolModel.cards.map((card, index) => (
+                {workspaceToolModel.cards.map((card, index) => (
                   <Reveal key={`${card.eyebrow}-${card.title}`} delay={80 + index * 60}>
                     <article
                       className={`hover-lift rounded-[1.9rem] border ${toneBorder(
@@ -3564,7 +3653,7 @@ function RecommendationsPage({
               {activeToolKey === "pesticide" ? (
                 <div className="grid gap-5 lg:grid-cols-[1.1fr_0.9fr]">
                   <ProtectionProductPanel
-                    products={toolModel.products || []}
+                    products={workspaceToolModel.products || []}
                     translate={translate}
                   />
                   <PpqsAdvisoryPanel
@@ -3577,10 +3666,10 @@ function RecommendationsPage({
               <div className="grid gap-5">
                 <article className="rounded-[1.9rem] border border-slate-200 bg-white p-5">
                   <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">
-                    {toolModel.checklistTitle}
+                    {workspaceToolModel.checklistTitle}
                   </p>
                   <div className="mt-4 grid gap-3">
-                    {toolModel.checklist.map((item) => (
+                    {workspaceToolModel.checklist.map((item) => (
                       <div
                         key={item}
                         className="flex gap-3 rounded-[1.3rem] bg-slate-50 px-4 py-3 text-sm text-slate-700"
@@ -3592,11 +3681,11 @@ function RecommendationsPage({
                   </div>
                 </article>
 
-                <article className="rounded-[1.9rem] bg-slate-950 p-5 text-white">
-                  <p className="text-xs font-semibold uppercase tracking-[0.24em] text-white/60">
+                <article className="soft-accent-panel rounded-[1.9rem] p-5 text-slate-900">
+                  <p className="soft-accent-kicker text-xs font-semibold uppercase tracking-[0.24em]">
                     {translate("Planner note")}
                   </p>
-                  <p className="mt-3 text-sm leading-7 text-white/80">{toolModel.note}</p>
+                  <p className="soft-accent-copy mt-3 text-sm leading-7">{workspaceToolModel.note}</p>
                 </article>
               </div>
             </div>
@@ -3604,6 +3693,234 @@ function RecommendationsPage({
         )
       ) : null}
     </div>
+  );
+}
+
+function SeedVarietyPanel({
+  toolModel,
+  selectedCrop,
+  seedVarietyInsights,
+  seedVarietyLoading,
+  seedVarietyError,
+  translate = (value) => value
+}) {
+  const supportedCropLabels = (seedVarietyInsights?.supportedCropKeys || [])
+    .map((cropKey) => getCropProfile(cropKey)?.label)
+    .filter(Boolean)
+    .map((label) => translate(label));
+
+  return (
+    <SurfaceCard
+      eyebrow={toolModel.badge}
+      title={toolModel.title}
+      subtitle={translate("Official seed varieties for the selected crop. Only values traced to certified institute pages are shown, and unpublished price fields stay blank instead of estimated.")}
+      elevated
+    >
+      <div className="grid gap-6">
+        <div className="grid gap-4 xl:grid-cols-[0.95fr_1.05fr]">
+          <article className="rounded-[1.9rem] border border-slate-200 bg-white p-5">
+            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">
+              {translate("Selection scope")}
+            </p>
+            <h3 className="mt-3 font-display text-3xl font-bold text-slate-950">
+              {translate(selectedCrop?.label || "Choose crop")}
+            </h3>
+            <p className="mt-3 text-sm leading-7 text-slate-600">
+              {translate("This panel replaces placeholder seed cards with officially sourced variety entries whenever a connected institute source is available for the selected crop.")}
+            </p>
+            <div className="mt-5 grid gap-3 sm:grid-cols-2">
+              <MiniStat
+                label={translate("Selected crop")}
+                value={translate(selectedCrop?.label || "Choose crop")}
+              />
+              <MiniStat
+                label={translate("Official entries")}
+                value={String(seedVarietyInsights?.varietyCount || 0)}
+              />
+            </div>
+          </article>
+
+          <article className="soft-accent-panel rounded-[1.9rem] p-5 text-slate-900">
+            <p className="soft-accent-kicker text-xs font-semibold uppercase tracking-[0.24em]">
+              {translate("Certified source")}
+            </p>
+            <h3 className="mt-3 font-display text-3xl font-bold">
+              {seedVarietyInsights?.sourceName || translate("Official seed directory")}
+            </h3>
+            <p className="soft-accent-copy mt-3 text-sm leading-7">
+              {translate(
+                seedVarietyInsights?.note ||
+                  "Only officially published seed insights are shown here."
+              )}
+            </p>
+            <div className="mt-5 grid gap-3 sm:grid-cols-3">
+              <MiniStat
+                label={translate("Verified")}
+                value={
+                  seedVarietyInsights?.verifiedOn
+                    ? formatDateLong(seedVarietyInsights.verifiedOn)
+                    : translate("Not listed")
+                }
+                dark
+              />
+              <MiniStat
+                label={translate("Varieties")}
+                value={String(seedVarietyInsights?.varietyCount || 0)}
+                dark
+              />
+              <MiniStat
+                label={translate("Official prices")}
+                value={String(seedVarietyInsights?.officialPriceCount || 0)}
+                dark
+              />
+            </div>
+            {seedVarietyInsights?.sourceUrl ? (
+              <div className="mt-5 flex flex-wrap gap-3">
+                <a
+                  href={seedVarietyInsights.sourceUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="accent-button rounded-full px-4 py-2 text-sm font-semibold transition"
+                >
+                  {translate("Open official source")}
+                </a>
+                {seedVarietyInsights?.priceSourceUrl ? (
+                  <a
+                    href={seedVarietyInsights.priceSourceUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="rounded-full border border-emerald-300 bg-white/70 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-white"
+                  >
+                    {translate("Open official price source")}
+                  </a>
+                ) : null}
+              </div>
+            ) : null}
+          </article>
+        </div>
+
+        {seedVarietyLoading ? (
+          <div className="rounded-[1.8rem] border border-slate-200 bg-white p-6 text-sm text-slate-600">
+            {translate("Loading official seed varieties for the selected crop...")}
+          </div>
+        ) : seedVarietyError ? (
+          <div className="rounded-[1.8rem] border border-rose-200 bg-rose-50 p-6 text-sm text-rose-700">
+            {translate(seedVarietyError)}
+          </div>
+        ) : seedVarietyInsights?.supported === false ? (
+          <article className="rounded-[1.9rem] border border-dashed border-slate-300 bg-slate-50 p-6">
+            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">
+              {translate("Coverage note")}
+            </p>
+            <h3 className="mt-3 font-display text-2xl font-bold text-slate-950">
+              {translate("Official seed sheet not available for this crop yet")}
+            </h3>
+            <p className="mt-3 text-sm leading-7 text-slate-600">
+              {translate(seedVarietyInsights.message)}
+            </p>
+            {supportedCropLabels.length ? (
+              <p className="mt-4 text-sm text-slate-600">
+                <span className="font-semibold text-slate-900">{translate("Currently covered:")}</span>{" "}
+                {supportedCropLabels.join(", ")}
+              </p>
+            ) : null}
+          </article>
+        ) : (
+          <div className="grid gap-4">
+            {(seedVarietyInsights?.varieties || []).map((variety, index) => (
+              <Reveal key={`${variety.name}-${variety.type}`} delay={70 + index * 40}>
+                <article className="hover-lift rounded-[1.9rem] border border-slate-200 bg-white p-5 shadow-[0_18px_38px_rgba(15,23,42,0.05)]">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-[0.24em] text-emerald-700">
+                        {translate(variety.type || "Official variety")}
+                      </p>
+                      <h3 className="mt-2 font-display text-2xl font-bold text-slate-950">
+                        {translate(variety.name)}
+                      </h3>
+                    </div>
+                    <span
+                      className={`rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] ${
+                        variety.officialPriceLabel
+                          ? "bg-emerald-100 text-emerald-700"
+                          : "bg-slate-100 text-slate-600"
+                      }`}
+                    >
+                      {translate(variety.officialPriceLabel || "Price not published")}
+                    </span>
+                  </div>
+
+                  <div className="mt-5 grid gap-3 lg:grid-cols-3">
+                    <StatTile
+                      label={translate("Time to grow")}
+                      value={translate(variety.maturityLabel || "Not listed")}
+                    />
+                    <StatTile
+                      label={translate("Expected output")}
+                      value={translate(variety.yieldLabel || "Not listed")}
+                    />
+                    <StatTile
+                      label={translate("Best fit")}
+                      value={translate(variety.suitabilityLabel || "See official source")}
+                    />
+                  </div>
+
+                  {variety.seedRateLabel ? (
+                    <div className="mt-4 rounded-[1.3rem] border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm text-slate-700">
+                      <span className="font-semibold text-slate-900">{translate("Seed rate:")}</span>{" "}
+                      {translate(variety.seedRateLabel)}
+                    </div>
+                  ) : null}
+
+                  {variety.insights?.length ? (
+                    <div className="mt-5">
+                      <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">
+                        {translate("Official insights")}
+                      </p>
+                      <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                        {variety.insights.map((item) => (
+                          <div
+                            key={`${variety.name}-${item}`}
+                            className="flex gap-3 rounded-[1.3rem] bg-slate-50 px-4 py-3 text-sm text-slate-700"
+                          >
+                            <span className="mt-1 h-2.5 w-2.5 rounded-full bg-emerald-500" />
+                            <span>{translate(item)}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ) : null}
+
+                  <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-4">
+                    <p className="text-sm text-slate-600">{translate(variety.officialPriceNote)}</p>
+                    <div className="flex flex-wrap gap-3">
+                      {variety.priceSourceUrl ? (
+                        <a
+                          href={variety.priceSourceUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-emerald-200 hover:bg-emerald-50"
+                        >
+                          {translate("Price source")}
+                        </a>
+                      ) : null}
+                      <a
+                        href={variety.sourceUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="accent-button rounded-full px-4 py-2 text-sm font-semibold transition"
+                      >
+                        {translate("Official source")}
+                      </a>
+                    </div>
+                  </div>
+                </article>
+              </Reveal>
+            ))}
+          </div>
+        )}
+      </div>
+    </SurfaceCard>
   );
 }
 
@@ -3837,7 +4154,7 @@ function SchemeCard({ item, translate = (value) => value }) {
           href={item.sourceUrl}
           target="_blank"
           rel="noreferrer"
-          className="rounded-full bg-slate-950 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800"
+          className="accent-button rounded-full px-4 py-2 text-sm font-semibold transition"
         >
           {translate("View Vikaspedia")}
         </a>
@@ -4256,26 +4573,24 @@ function PriceInsightPanel({
             </div>
           </article>
 
-          <article className="rounded-[1.9rem] bg-slate-950 p-5 text-white">
-            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-white/60">
+          <article className="soft-accent-panel rounded-[1.9rem] p-5 text-slate-900">
+            <p className="soft-accent-kicker text-xs font-semibold uppercase tracking-[0.24em]">
               {translate("Selected crop")}
             </p>
             <h3 className="mt-3 font-display text-3xl font-bold">
               {translate(selectedCrop?.label || "Choose crop")}
             </h3>
-            <p className="mt-3 text-sm leading-7 text-white/80">
+            <p className="soft-accent-copy mt-3 text-sm leading-7">
               {translate("Current prices and previous-year comparison are both pulled from Agmarknet for the selected crop and location.")}
             </p>
             <div className="mt-5 grid gap-3 sm:grid-cols-2">
               <MiniStat
                 label={translate("State")}
                 value={priceFilterState || translate("Choose state")}
-                dark
               />
               <MiniStat
                 label={translate("District")}
                 value={priceFilterDistrict || translate("All districts")}
-                dark
               />
             </div>
           </article>
@@ -4487,12 +4802,12 @@ function StoragePage({
               </div>
             </article>
 
-            <article className="rounded-[1.9rem] bg-slate-950 p-5 text-white">
-              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-white/60">
+            <article className="soft-accent-panel rounded-[1.9rem] p-5 text-slate-900">
+              <p className="soft-accent-kicker text-xs font-semibold uppercase tracking-[0.24em]">
                 {translate("Selected search")}
               </p>
               <h3 className="mt-3 font-display text-3xl font-bold">{selectedAreaLabel}</h3>
-              <p className="mt-3 text-sm leading-7 text-white/80">
+              <p className="soft-accent-copy mt-3 text-sm leading-7">
                 {translate(sourceNote)}
               </p>
               <div className="mt-5 grid gap-3 sm:grid-cols-2">
@@ -4600,7 +4915,7 @@ function StorageCard({ storage, showDistance = false, translate = (value) => val
           href={storage.mapsUrl}
           target="_blank"
           rel="noreferrer"
-          className="rounded-full bg-slate-950 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800"
+          className="accent-button rounded-full px-4 py-2 text-sm font-semibold transition"
         >
           {translate("Location")}
         </a>
@@ -4821,7 +5136,7 @@ function ProfilePage({
             <button
               type="submit"
               disabled={saving}
-              className="rounded-full bg-slate-950 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-400"
+              className="accent-button rounded-full px-5 py-3 text-sm font-semibold transition disabled:cursor-not-allowed"
             >
               {saving ? translate("Saving...") : translate("Save profile")}
             </button>
@@ -5283,7 +5598,7 @@ function ErrorScreen({ error, onRetry }) {
         <button
           type="button"
           onClick={onRetry}
-          className="mt-6 rounded-full bg-slate-950 px-5 py-3 text-sm font-semibold text-white"
+          className="accent-button mt-6 rounded-full px-5 py-3 text-sm font-semibold transition"
         >
           {translate("Retry")}
         </button>
@@ -5460,13 +5775,17 @@ function StatTile({ label, value, dark = false }) {
   return (
     <article
       className={`rounded-[1.5rem] p-4 ${
-        dark ? "bg-white/8 ring-1 ring-white/10" : "border border-slate-200 bg-white"
+        dark ? "soft-accent-stat" : "border border-slate-200 bg-white"
       }`}
     >
-      <p className={`text-xs font-semibold uppercase tracking-[0.22em] ${dark ? "text-white/55" : "text-slate-500"}`}>
+      <p
+        className={`text-xs font-semibold uppercase tracking-[0.22em] ${
+          dark ? "soft-accent-stat-label" : "text-slate-500"
+        }`}
+      >
         {label}
       </p>
-      <h3 className={`mt-3 text-lg font-bold ${dark ? "text-white" : "text-slate-950"}`}>
+      <h3 className={`mt-3 text-lg font-bold ${dark ? "soft-accent-stat-value" : "text-slate-950"}`}>
         {value}
       </h3>
     </article>
@@ -5660,7 +5979,7 @@ function PestPhotoCard({ item, translate = (value) => value }) {
           </div>
         )}
 
-        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-slate-950/90 via-slate-950/45 to-transparent p-4">
+        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-emerald-950/80 via-emerald-900/35 to-transparent p-4">
           <p className="text-sm font-semibold uppercase tracking-[0.2em] text-white/70">
             {translate("Pest")}
           </p>
@@ -5677,7 +5996,7 @@ function PestPhotoCard({ item, translate = (value) => value }) {
             href={photoState.pageUrl}
             target="_blank"
             rel="noreferrer"
-            className="mt-4 inline-flex rounded-full bg-slate-950 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800"
+            className="accent-button mt-4 inline-flex rounded-full px-4 py-2 text-sm font-semibold transition"
           >
             {translate("Source: Wikipedia")}
           </a>
@@ -5696,7 +6015,7 @@ function PlannerActionPopup({
   translate = (value) => value
 }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/35 px-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-emerald-950/20 px-4">
       <div className="glass-panel w-full max-w-2xl p-6">
         <div className="flex items-start justify-between gap-4">
           <div>
@@ -5861,7 +6180,7 @@ function PlannerCalendar({
           onClick={() => onFilterChange("All")}
           className={`rounded-full px-4 py-2 text-sm font-semibold uppercase tracking-[0.18em] transition ${
             activeFilter === "All"
-              ? "bg-slate-950 text-white"
+              ? "accent-button text-white"
               : "bg-slate-100 text-slate-700 hover:bg-white"
           }`}
         >
@@ -6291,15 +6610,15 @@ function resolveOverviewMetricTone(item, section, index) {
 
 function MiniStat({ label, value, dark = false }) {
   return (
-    <div className={`rounded-[1.2rem] px-4 py-3 ${dark ? "bg-white/10" : "bg-white"}`}>
+    <div className={`rounded-[1.2rem] px-4 py-3 ${dark ? "soft-accent-stat" : "bg-white"}`}>
       <p
         className={`text-[11px] font-semibold uppercase tracking-[0.18em] ${
-          dark ? "text-white/60" : "text-slate-500"
+          dark ? "soft-accent-stat-label" : "text-slate-500"
         }`}
       >
         {label}
       </p>
-      <p className={`mt-2 text-sm font-semibold ${dark ? "text-white" : "text-slate-900"}`}>
+      <p className={`mt-2 text-sm font-semibold ${dark ? "soft-accent-stat-value" : "text-slate-900"}`}>
         {value}
       </p>
     </div>
@@ -6763,19 +7082,19 @@ function ChatWidget({
     <div ref={widgetRef} className="fixed bottom-24 right-3 z-30 flex flex-col items-end gap-3 sm:bottom-5 sm:right-5">
       {isOpen ? (
         <div className="glass-panel w-[min(430px,calc(100vw-2.5rem))] overflow-hidden">
-          <div className="border-b border-white/60 bg-slate-950 px-5 py-4 text-white">
-            <p className="text-xs font-semibold uppercase tracking-[0.3em] text-white/60">
+          <div className="accent-shell border-b border-white/10 px-5 py-4 text-white">
+            <p className="accent-shell-muted text-xs font-semibold uppercase tracking-[0.3em]">
               {uiText.eyebrow}
             </p>
             <div className="mt-2 flex items-start justify-between gap-4">
               <div>
                 <h2 className="font-display text-2xl font-bold">{uiText.title}</h2>
-                <p className="mt-1 text-sm text-white/75">{uiText.subtitle}</p>
+                <p className="accent-shell-muted mt-1 text-sm">{uiText.subtitle}</p>
               </div>
               <button
                 type="button"
                 onClick={onToggle}
-                className="rounded-full bg-white/10 px-3 py-1 text-sm font-semibold"
+                className="accent-shell-chip rounded-full px-3 py-1 text-sm font-semibold"
               >
                 {translate("Close")}
               </button>
@@ -6801,7 +7120,7 @@ function ChatWidget({
                 key={`${message.role}-${index}`}
                 className={`rounded-[1.5rem] px-4 py-3 ${
                   message.role === "user"
-                    ? "ml-auto max-w-[88%] bg-slate-950 text-white"
+                    ? "accent-shell ml-auto max-w-[88%] text-white"
                     : message.role === "status"
                       ? "max-w-[88%] bg-amber-50 text-amber-900"
                       : "max-w-[88%] bg-white text-slate-900 shadow-soft"
@@ -6809,7 +7128,7 @@ function ChatWidget({
               >
                 <p
                   className={`text-[11px] font-semibold uppercase tracking-[0.2em] ${
-                    message.role === "user" ? "text-white/60" : "text-slate-400"
+                    message.role === "user" ? "accent-shell-muted" : "text-slate-400"
                   }`}
                 >
                   {message.role === "user"
@@ -6862,7 +7181,7 @@ function ChatWidget({
                 <button
                   type="submit"
                   disabled={busy}
-                  className="rounded-full bg-slate-950 px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60"
+                  className="accent-button rounded-full px-4 py-2.5 text-sm font-semibold disabled:opacity-60"
                 >
                   {busy ? translate("Sending...") : uiText.sendLabel}
                 </button>
@@ -6876,22 +7195,22 @@ function ChatWidget({
         type="button"
         onClick={onToggle}
         aria-label={uiText.launcherTitle}
-        className="group grid h-14 w-14 place-items-center overflow-hidden rounded-full bg-slate-950 text-left text-white shadow-ambient transition hover:-translate-y-0.5 sm:flex sm:h-auto sm:w-auto sm:items-center sm:rounded-[1.7rem] sm:px-5 sm:py-4"
+        className="accent-shell group grid h-14 w-14 place-items-center overflow-hidden rounded-full text-left text-white shadow-ambient transition hover:-translate-y-0.5 sm:flex sm:h-auto sm:w-auto sm:items-center sm:rounded-[1.7rem] sm:px-5 sm:py-4"
       >
-        <div className="grid h-10 w-10 place-items-center rounded-full bg-white/10 sm:hidden">
+        <div className="accent-shell-chip grid h-10 w-10 place-items-center rounded-full sm:hidden">
           <span className="text-lg">{translate("AI")}</span>
         </div>
         <div className="hidden sm:ml-3 sm:block">
-          <p className="text-xs font-semibold uppercase tracking-[0.28em] text-white/55">
+          <p className="accent-shell-muted text-xs font-semibold uppercase tracking-[0.28em]">
             {uiText.launcherSubtitle}
           </p>
           <div className="mt-2 flex items-center gap-3">
-            <div className="hidden h-10 w-10 place-items-center rounded-2xl bg-white/10 sm:grid">
+            <div className="accent-shell-chip hidden h-10 w-10 place-items-center rounded-2xl sm:grid">
               <span className="text-lg">{translate("AI")}</span>
             </div>
             <div>
               <p className="font-display text-lg font-bold">{uiText.launcherTitle}</p>
-              <p className="text-sm text-white/70">{translate("Open assistant")}</p>
+              <p className="accent-shell-muted text-sm">{translate("Open assistant")}</p>
             </div>
           </div>
         </div>
