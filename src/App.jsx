@@ -53,6 +53,11 @@ const NAV_ITEM_CONFIG = [
     path: "/storages",
     label: "Storages",
     icon: "storage"
+  },
+  {
+    path: "/contact",
+    label: "Contact Us",
+    icon: "contact"
   }
 ];
 
@@ -69,9 +74,25 @@ const ACTION_PLANNER_OPTIONS = [
 
 const STORAGE_REQUEST_CACHE_TTL_MS = 30 * 1000;
 const storageRequestCache = new Map();
+const FIXED_PROFILE_PRODUCT_ID = "AGC-PRODUCT-001";
+const CONTACT_PHONE_NUMBER = "xxxxx";
 
 function buildStorageRequestCacheKey(pathname, payload) {
   return `${pathname}:${JSON.stringify(payload)}`;
+}
+
+function withFixedProductId(siteData) {
+  if (!siteData) {
+    return siteData;
+  }
+
+  return {
+    ...siteData,
+    profile: {
+      ...(siteData.profile || {}),
+      productId: FIXED_PROFILE_PRODUCT_ID
+    }
+  };
 }
 
 function readCachedStorageRequest(cacheKey) {
@@ -1322,6 +1343,10 @@ function normalizePathname(pathname) {
     return "/profile";
   }
 
+  if (normalized === "/contact") {
+    return "/contact";
+  }
+
   return "/";
 }
 
@@ -1389,8 +1414,59 @@ function buildLocationKey(stateName, districtName) {
   return `${String(stateName || "").trim()}::${String(districtName || "").trim()}`;
 }
 
+function normalizeLocationLabel(value) {
+  return String(value || "")
+    .toLowerCase()
+    .replace(/&/g, " and ")
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
+
+function findStateOption(states, stateName) {
+  const normalizedState = normalizeLocationLabel(stateName);
+
+  if (!normalizedState) {
+    return null;
+  }
+
+  return (states || []).find((state) => normalizeLocationLabel(state.name) === normalizedState) || null;
+}
+
+function findDistrictOption(states, stateName, districtName) {
+  const state = findStateOption(states, stateName);
+  const normalizedDistrict = normalizeLocationLabel(districtName);
+
+  if (!state || !normalizedDistrict) {
+    return null;
+  }
+
+  return (
+    (state.districts || []).find(
+      (district) => normalizeLocationLabel(district.name) === normalizedDistrict
+    ) || null
+  );
+}
+
+function matchesLocationOption(optionName, value) {
+  return normalizeLocationLabel(optionName) === normalizeLocationLabel(value);
+}
+
+function canonicalizeLocationSelection(states, stateName, districtName) {
+  const matchedState = findStateOption(states, stateName);
+  const matchedDistrict = findDistrictOption(
+    states,
+    matchedState?.name || stateName,
+    districtName
+  );
+
+  return {
+    state: matchedState?.name || String(stateName || "").trim(),
+    district: matchedDistrict?.name || String(districtName || "").trim()
+  };
+}
+
 function getDistrictOptionsForState(states, stateName) {
-  const match = (states || []).find((state) => state.name === stateName);
+  const match = findStateOption(states, stateName);
   return match?.districts || [];
 }
 
@@ -1608,17 +1684,23 @@ function App() {
   }, [profileLocationKey]);
 
   useEffect(() => {
-    setPriceFilterState(site?.profile?.state || "");
-    setPriceFilterDistrict(site?.profile?.district || "");
-    setStorageFilterState(site?.profile?.state || "");
-    setStorageFilterDistrict(site?.profile?.district || "");
-    setSchemeFilterState(site?.profile?.state || "");
-  }, [site?.profile?.state, site?.profile?.district]);
+    const location = canonicalizeLocationSelection(
+      agmarknetLocations,
+      site?.profile?.state,
+      site?.profile?.district
+    );
+
+    setPriceFilterState(location.state);
+    setPriceFilterDistrict(location.district);
+    setStorageFilterState(location.state);
+    setStorageFilterDistrict(location.district);
+    setSchemeFilterState(location.state);
+  }, [agmarknetLocations, site?.profile?.state, site?.profile?.district]);
 
   useEffect(() => {
     if (
       priceFilterDistrict &&
-      !priceDistrictOptions.some((district) => district.name === priceFilterDistrict)
+      !priceDistrictOptions.some((district) => matchesLocationOption(district.name, priceFilterDistrict))
     ) {
       setPriceFilterDistrict("");
     }
@@ -1627,7 +1709,7 @@ function App() {
   useEffect(() => {
     if (
       storageFilterDistrict &&
-      !storageDistrictOptions.some((district) => district.name === storageFilterDistrict)
+      !storageDistrictOptions.some((district) => matchesLocationOption(district.name, storageFilterDistrict))
     ) {
       setStorageFilterDistrict("");
     }
@@ -2176,7 +2258,7 @@ function App() {
         throw new Error(dashboardPayload.error || "Unable to load dashboard data.");
       }
 
-      setSite(sitePayload);
+      setSite(withFixedProductId(sitePayload));
       setDashboard(dashboardPayload);
     } catch (loadError) {
       setError(
@@ -2238,7 +2320,7 @@ function App() {
       }
 
       if (payload.siteData) {
-        setSite(payload.siteData);
+        setSite(withFixedProductId(payload.siteData));
       }
     } catch (saveError) {
       setError(resolveAppErrorMessage(saveError, "Unable to save profile."));
@@ -2375,7 +2457,7 @@ function App() {
               onClick={() => navigateTo("/")}
               className="flex items-center gap-3 text-left"
             >
-              <div className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-[linear-gradient(135deg,#0f172a_0%,#17324d_52%,#1f5c4e_100%)] text-base font-black text-white shadow-soft ring-1 ring-slate-200/60 sm:h-12 sm:w-12">
+              <div className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl border border-emerald-200 bg-emerald-50 text-base font-black text-emerald-800 shadow-soft ring-1 ring-white/60 sm:h-12 sm:w-12">
                 A
               </div>
               <div className="min-w-0">
@@ -2439,7 +2521,7 @@ function App() {
                   onClick={() => setProfileOpen((current) => !current)}
                   className="flex items-center gap-2 rounded-full border border-slate-200/80 bg-white/92 px-2.5 py-2 shadow-soft transition hover:-translate-y-0.5 sm:gap-3 sm:px-3"
                 >
-                  <div className="grid h-10 w-10 place-items-center rounded-full bg-[linear-gradient(135deg,#0f172a_0%,#1f5c4e_100%)] text-sm font-bold text-white shadow-soft sm:h-11 sm:w-11">
+                  <div className="grid h-10 w-10 place-items-center rounded-full border border-emerald-200 bg-emerald-50 text-sm font-bold text-emerald-800 shadow-soft sm:h-11 sm:w-11">
                     {site.profile.name
                       .split(" ")
                       .map((part) => part[0])
@@ -2497,7 +2579,7 @@ function App() {
                     <button
                       type="button"
                       onClick={() => navigateTo("/profile")}
-                      className="mt-4 w-full rounded-2xl bg-[linear-gradient(135deg,#0f172a_0%,#17324d_50%,#1f5c4e_100%)] px-4 py-3 text-sm font-semibold text-white transition hover:brightness-105"
+                      className="mt-4 w-full rounded-2xl bg-emerald-700 px-4 py-3 text-sm font-semibold text-white transition hover:bg-emerald-800"
                     >
                       {uiText.manageAccountLabel}
                     </button>
@@ -2656,6 +2738,14 @@ function App() {
               translate={translate}
             />
           ) : null}
+
+          {pathname === "/contact" ? (
+            <ContactPage
+              site={site}
+              onNavigate={navigateTo}
+              translate={translate}
+            />
+          ) : null}
         </main>
       </div>
 
@@ -2683,7 +2773,7 @@ function App() {
 }
 
 function NavIcon({ icon, active }) {
-  const tone = active ? "text-white" : "text-slate-500";
+  const tone = active ? "text-emerald-800" : "text-slate-500";
 
   if (icon === "overview") {
     return (
@@ -2741,6 +2831,20 @@ function NavIcon({ icon, active }) {
     );
   }
 
+  if (icon === "contact") {
+    return (
+      <svg viewBox="0 0 24 24" fill="none" className={`h-5 w-5 ${tone}`} aria-hidden="true">
+        <path
+          d="M6.75 5.75H17.25A1.5 1.5 0 0 1 18.75 7.25V16.75A1.5 1.5 0 0 1 17.25 18.25H6.75A1.5 1.5 0 0 1 5.25 16.75V7.25A1.5 1.5 0 0 1 6.75 5.75ZM7 8L12 12L17 8M9 18.25V20.25M15 18.25V20.25"
+          stroke="currentColor"
+          strokeWidth="1.8"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </svg>
+    );
+  }
+
   return (
     <svg viewBox="0 0 24 24" fill="none" className={`h-5 w-5 ${tone}`} aria-hidden="true">
       <path
@@ -2757,7 +2861,7 @@ function NavIcon({ icon, active }) {
 function MobileTabBar({ items, pathname, onNavigate }) {
   return (
     <div className="fixed inset-x-3 bottom-3 z-40 sm:hidden">
-      <nav className="mobile-tabbar glass-panel grid grid-cols-5 gap-1.5 p-1.5">
+      <nav className="mobile-tabbar glass-panel grid grid-cols-6 gap-1.5 p-1.5">
         {items.map((item) => {
           const isActive = pathname === item.path;
 
@@ -2768,13 +2872,13 @@ function MobileTabBar({ items, pathname, onNavigate }) {
               onClick={() => onNavigate(item.path)}
               className={`flex min-h-[4.35rem] flex-col items-center justify-center gap-1 rounded-[1.1rem] px-1 py-2 text-center transition ${
                 isActive
-                  ? "bg-[linear-gradient(135deg,#0f172a_0%,#17324d_55%,#1f5c4e_100%)] text-white shadow-[0_12px_26px_rgba(15,23,42,0.18)]"
+                  ? "border border-emerald-200 bg-emerald-50 text-emerald-800 shadow-[0_10px_22px_rgba(15,23,42,0.06)]"
                   : "bg-white/72 text-slate-600"
               }`}
               aria-current={isActive ? "page" : undefined}
             >
               <NavIcon icon={item.icon} active={isActive} />
-              <span className={`text-[10px] font-semibold leading-tight ${isActive ? "text-white" : "text-slate-600"}`}>
+              <span className={`text-[10px] font-semibold leading-tight ${isActive ? "text-emerald-800" : "text-slate-600"}`}>
                 {item.label}
               </span>
             </button>
@@ -2806,8 +2910,8 @@ function OverviewPage({
         title={
           <>
             {translate("Startup-ready")}
-            <span className="bg-gradient-to-r from-emerald-600 via-lime-500 to-cyan-500 bg-clip-text text-transparent">
-              {` ${translate("agricultural intelligence")}`}
+              <span className="text-emerald-700">
+                {` ${translate("agricultural intelligence")}`}
             </span>{` ${translate("for every field decision.")}`}
           </>
         }
@@ -2855,7 +2959,7 @@ function OverviewPage({
               <MetricTile
                 label={translate(item.label)}
                 value={`${item.value}${item.unit ? ` ${item.unit}` : ""}`}
-                tone={item.tone}
+                tone={resolveOverviewMetricTone(item, "soil", index)}
               />
             </Reveal>
           ))}
@@ -2873,7 +2977,7 @@ function OverviewPage({
               <MetricTile
                 label={item.label}
                 value={`${formatNumber(item.value, item.decimals)} ${item.unit}`}
-                tone={item.tone}
+                tone={resolveOverviewMetricTone(item, "environment", index)}
               />
             </Reveal>
           ))}
@@ -3007,7 +3111,7 @@ function RecommendationsPage({
         title={
           <>
             {translate("Dedicated planning for")}
-            <span className="bg-gradient-to-r from-slate-950 via-emerald-600 to-cyan-500 bg-clip-text text-transparent">
+            <span className="text-emerald-700">
               {` ${translate("crop fit, fertilizer, and next actions")}`}
             </span>
             .
@@ -3139,16 +3243,16 @@ function RecommendationsPage({
         >
           {selectedCrop ? (
             <div className="grid gap-5">
-              <div className="rounded-[2rem] bg-gradient-to-br from-slate-950 via-slate-900 to-emerald-900 p-6 text-white">
-                <p className="text-xs font-semibold uppercase tracking-[0.24em] text-white/60">
+              <div className="rounded-[2rem] border border-emerald-200 bg-[linear-gradient(180deg,#f8fffb_0%,#dcfce7_100%)] p-6 text-slate-900">
+                <p className="text-xs font-semibold uppercase tracking-[0.24em] text-emerald-700">
                   {cropUi.familyLabel}
                 </p>
                 <div className="mt-3 flex flex-wrap items-end justify-between gap-4">
                   <div>
                     <h3 className="font-display text-3xl font-black">{translate(selectedCrop.label)}</h3>
-                    <p className="mt-2 text-sm text-white/75">{translate(selectedCrop.family)}</p>
+                    <p className="mt-2 text-sm text-slate-700">{translate(selectedCrop.family)}</p>
                   </div>
-                  <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-white/70">
+                  <span className="rounded-full border border-emerald-200 bg-white/80 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-emerald-800">
                     {cropUi.unlockedMessagePrefix} {translate(selectedCrop.label)}
                   </span>
                 </div>
@@ -3156,7 +3260,6 @@ function RecommendationsPage({
                   <StatTile
                     label={cropUi.estimatedCostLabel}
                     value={`${formatCurrency(selectedCrop.estimatedGrowCost)} / acre`}
-                    dark
                   />
                   <StatTile
                     label={cropUi.marketPriceLabel}
@@ -3169,11 +3272,10 @@ function RecommendationsPage({
                         ? translate(buildAgmarknetUnitLabel(selectedCropInsight.priceUnit))
                         : translate(selectedCrop.marketUnit)
                     }`}
-                    dark
                   />
                 </div>
                 {selectedCropInsight ? (
-                  <p className="mt-4 text-sm text-white/72">
+                  <p className="mt-4 text-sm text-slate-600">
                     {`Agmarknet • ${selectedCropInsight.marketName}, ${
                       selectedCropInsight.stateName
                     } • ${formatDateLong(selectedCropInsight.lastReportedDate)}`}
@@ -3202,7 +3304,7 @@ function RecommendationsPage({
                       onClick={() => onSelectTool(tool.key)}
                       className={`rounded-full px-4 py-3 text-sm font-semibold transition ${
                         activeToolKey === tool.key
-                          ? "bg-gradient-to-r from-slate-950 via-emerald-700 to-cyan-600 text-white shadow-ambient ring-2 ring-emerald-200"
+                          ? "border border-emerald-200 bg-emerald-50 text-emerald-800 shadow-soft"
                           : "bg-slate-100 text-slate-700 hover:bg-white hover:text-slate-950"
                       }`}
                     >
@@ -3291,6 +3393,7 @@ function RecommendationsPage({
                   subtitle={uiText.realtimePanel.soilSubtitle}
                   items={realtimeCardSets?.soil || []}
                   statusMap={uiText.realtimePanel.status}
+                  cardKind="soil"
                 />
 
                 <SensorValueSection
@@ -3298,6 +3401,7 @@ function RecommendationsPage({
                   subtitle={uiText.realtimePanel.environmentSubtitle}
                   items={realtimeCardSets?.environment || []}
                   statusMap={uiText.realtimePanel.status}
+                  cardKind="environment"
                 />
               </div>
             </SurfaceCard>
@@ -3311,6 +3415,7 @@ function RecommendationsPage({
                 title={uiText.recommendationColumnTitles.inorganic}
                 items={cropRecommendations.inorganic}
                 boxed={false}
+                marketplaceKind="inorganic"
                 translate={translate}
               />
             </SurfaceCard>
@@ -3324,6 +3429,7 @@ function RecommendationsPage({
                 title={uiText.recommendationColumnTitles.organic}
                 items={cropRecommendations.organic}
                 boxed={false}
+                marketplaceKind="organic"
                 translate={translate}
               />
             </SurfaceCard>
@@ -3338,24 +3444,24 @@ function RecommendationsPage({
             >
               <div className="grid gap-4 lg:grid-cols-2">
                 {organicAlternativeItems.map((item, index) => (
-                  <Reveal key={`${item.title}-${item.altFertilizer}`} delay={80 + index * 50}>
-                    <article className="hover-lift rounded-[1.9rem] border border-slate-200 bg-white p-5">
+                  <Reveal key={`${item.title}-${item.fertilizerName}`} delay={80 + index * 50}>
+                    <article className="hover-lift rounded-[1.9rem] border border-emerald-200 bg-[linear-gradient(180deg,#f0fdf4_0%,#dcfce7_100%)] p-5">
                       <p className="text-xs font-semibold uppercase tracking-[0.24em] text-emerald-600">
                         {item.eyebrow}
                       </p>
                       <div className="mt-3 flex flex-wrap items-start justify-between gap-3">
                         <div>
                           <h3 className="font-display text-2xl font-bold text-slate-950">
-                            {item.title}
+                            {item.fertilizerName}
                           </h3>
                           <p className="mt-2 text-sm font-semibold text-slate-700">
-                            {item.altFertilizer}
+                            {item.title}
                           </p>
                         </div>
                         <span className="status-pill status-pill--emerald">{item.applicationRate}</span>
                       </div>
                       <p className="mt-3 text-sm leading-7 text-slate-600">{item.description}</p>
-                      <p className="mt-4 rounded-[1.2rem] bg-slate-50 px-4 py-3 text-sm text-slate-600">
+                      <p className="mt-4 rounded-[1.2rem] bg-white/70 px-4 py-3 text-sm text-slate-700">
                         {item.note}
                       </p>
                     </article>
@@ -3562,24 +3668,24 @@ function SchemeInsightsPanel({
             </div>
           </article>
 
-          <article className="rounded-[1.9rem] bg-slate-950 p-5 text-white">
-            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-white/60">
+          <article className="rounded-[1.9rem] border border-emerald-200 bg-emerald-50 p-5">
+            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-emerald-700">
               {translate("Source")}
             </p>
-            <h3 className="mt-3 font-display text-3xl font-bold">{translate("Vikaspedia")}</h3>
-            <p className="mt-3 text-sm leading-7 text-white/80">
+            <h3 className="mt-3 font-display text-3xl font-bold text-slate-950">
+              {translate("Vikaspedia")}
+            </h3>
+            <p className="mt-3 text-sm leading-7 text-slate-600">
               {translate("Central farmer schemes are shown first. After you choose a state, the panel loads farmer-focused state schemes and insurance schemes for that state from Vikaspedia.")}
             </p>
             <div className="mt-5 grid gap-3 sm:grid-cols-2">
               <MiniStat
                 label={translate("Central schemes")}
                 value={String(centralSchemes.length)}
-                dark
               />
               <MiniStat
                 label={translate("Selected state")}
                 value={schemeFilterState || translate("Choose state")}
-                dark
               />
             </div>
           </article>
@@ -3765,9 +3871,93 @@ function formatSchemeScope(scope) {
   }
 }
 
+const PROTECTION_MARKETPLACE_PRODUCTS = [
+  {
+    matchers: ["tricyclazole", "beam"],
+    productLabel: "Beam Fungicide",
+    url: "https://www.bighaat.com/products/beam-fungicide"
+  },
+  {
+    matchers: ["mancozeb", "indofil m-45", "indofil"],
+    productLabel: "Indofil M-45 Fungicide",
+    url: "https://www.bighaat.com/products/indofil-m45-contact-fungicide"
+  },
+  {
+    matchers: ["chlorantraniliprole", "coragen"],
+    productLabel: "Coragen Insecticide",
+    url: "https://www.bighaat.com/products/coragen-dupont"
+  },
+  {
+    matchers: ["imidacloprid", "confidor"],
+    productLabel: "Confidor Super Insecticide",
+    url: "https://www.bighaat.com/products/confidor-super-insecticide"
+  },
+  {
+    matchers: ["propiconazole", "tilt"],
+    productLabel: "Tilt Fungicide",
+    url: "https://www.bighaat.com/products/tilt-fungicide"
+  },
+  {
+    matchers: ["thiamethoxam", "actara"],
+    productLabel: "Actara Insecticide",
+    url: "https://www.bighaat.com/products/actara-insecticide"
+  },
+  {
+    matchers: ["lambda-cyhalothrin", "lambda cyhalothrin", "karate"],
+    productLabel: "Karate Insecticide",
+    url: "https://www.bighaat.com/products/karate-insecticide"
+  },
+  {
+    matchers: ["metalaxyl", "ridomil gold", "ridomil"],
+    productLabel: "Ridomil Gold Fungicide",
+    url: "https://www.bighaat.com/products/ridomil-gold-fungicide"
+  },
+  {
+    matchers: ["emamectin", "proclaim"],
+    productLabel: "Proclaim Insecticide",
+    url: "https://www.bighaat.com/products/proclaim-insecticide"
+  },
+  {
+    matchers: ["spinosad", "tracer"],
+    productLabel: "Tracer Insecticide",
+    url: "https://www.bighaat.com/products/tracer-insecticide"
+  },
+  {
+    matchers: ["copper oxychloride", "blitox"],
+    productLabel: "Blitox Fungicide",
+    url: "https://www.bighaat.com/products/blitox-fungicide"
+  }
+];
+
+function getProtectionMarketplaceProduct(product) {
+  const haystack = normalizeLocationLabel(
+    [product?.title, ...(product?.brands || [])].filter(Boolean).join(" ")
+  );
+
+  return (
+    PROTECTION_MARKETPLACE_PRODUCTS.find((entry) =>
+      entry.matchers.some((matcher) => haystack.includes(normalizeLocationLabel(matcher)))
+    ) || null
+  );
+}
+
 function ProtectionProductPanel({ products = [], translate = (value) => value }) {
   if (!products.length) {
     return null;
+  }
+
+  const actionableProducts = products
+    .map((product) => getProtectionMarketplaceProduct(product))
+    .filter(Boolean);
+
+  function handleBuyProtectionBundle() {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    actionableProducts.forEach((product) => {
+      window.open(product.url, "_blank", "noopener,noreferrer");
+    });
   }
 
   return (
@@ -3775,31 +3965,76 @@ function ProtectionProductPanel({ products = [], translate = (value) => value })
       <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">
         {translate("Protection products")}
       </p>
+      <div className="mt-4 flex flex-wrap items-center gap-3 rounded-[1.5rem] border border-emerald-200 bg-emerald-50/70 px-4 py-4">
+        {actionableProducts.length ? (
+          <>
+            <button
+              type="button"
+              onClick={handleBuyProtectionBundle}
+              className="rounded-full bg-[linear-gradient(135deg,#065f46_0%,#0f766e_100%)] px-4 py-2 text-sm font-semibold text-white transition hover:brightness-105"
+            >
+              {translate("Buy both on BigHaat")}
+            </button>
+            <span className="text-xs text-emerald-800">
+              {translate("Opens the matched pesticide and insecticide product pages in new tabs.")}
+            </span>
+          </>
+        ) : (
+          <span className="text-sm font-semibold text-slate-600">
+            {translate("Buy links are unavailable for the current protection pair.")}
+          </span>
+        )}
+      </div>
       <div className="mt-4 grid gap-4">
-        {products.map((product) => (
-          <div
-            key={`${product.type}-${product.title}`}
-            className="rounded-[1.5rem] border border-slate-100 bg-slate-50 p-4"
-          >
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
-                  {translate(product.type)}
-                </p>
-                <h3 className="mt-2 font-display text-xl font-bold text-slate-950">
-                  {product.title}
-                </h3>
+        {products.map((product) => {
+          const marketplaceProduct = getProtectionMarketplaceProduct(product);
+
+          return (
+            <div
+              key={`${product.type}-${product.title}`}
+              className="rounded-[1.5rem] border border-slate-100 bg-slate-50 p-4"
+            >
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
+                    {translate(product.type)}
+                  </p>
+                  <h3 className="mt-2 font-display text-xl font-bold text-slate-950">
+                    {product.title}
+                  </h3>
+                </div>
+              </div>
+              <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                <MiniStat
+                  label={translate("Brand examples")}
+                  value={product.brands?.join(", ") || translate("Check local dealer")}
+                />
+                <MiniStat label={translate("Use when")} value={product.useCase} />
+              </div>
+              <div className="mt-4 flex flex-wrap items-center gap-3">
+                {marketplaceProduct ? (
+                  <>
+                    <a
+                      href={marketplaceProduct.url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="rounded-full bg-[linear-gradient(135deg,#065f46_0%,#0f766e_100%)] px-4 py-2 text-sm font-semibold text-white transition hover:brightness-105"
+                    >
+                      {translate("Buy on BigHaat")}
+                    </a>
+                    <span className="text-xs text-slate-500">
+                      {translate("Opens")} {marketplaceProduct.productLabel} {translate("on BigHaat")}
+                    </span>
+                  </>
+                ) : (
+                  <span className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-500">
+                    {translate("Buy link unavailable")}
+                  </span>
+                )}
               </div>
             </div>
-            <div className="mt-4 grid gap-3 sm:grid-cols-2">
-              <MiniStat
-                label={translate("Brand examples")}
-                value={product.brands?.join(", ") || translate("Check local dealer")}
-              />
-              <MiniStat label={translate("Use when")} value={product.useCase} />
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </article>
   );
@@ -4117,7 +4352,7 @@ function StoragePage({
         title={
           <>
             {translate("Find nearby")}
-            <span className="bg-gradient-to-r from-cyan-500 via-sky-500 to-emerald-500 bg-clip-text text-transparent">
+            <span className="text-emerald-700">
               {` ${translate("cold storages")}`}
             </span>
             .
@@ -4400,16 +4635,31 @@ function ProfilePage({
   const districtOptions = getDistrictOptionsForState(agmarknetLocations, formState.state);
 
   useEffect(() => {
+    const location = canonicalizeLocationSelection(
+      agmarknetLocations,
+      site?.profile?.state,
+      site?.profile?.district
+    );
+
     setFormState({
       name: site?.profile?.name || "",
       landSize: site?.profile?.landSize || "",
-      state: site?.profile?.state || "",
-      district: site?.profile?.district || ""
+      state: location.state,
+      district: location.district
     });
-  }, [site?.profile?.district, site?.profile?.landSize, site?.profile?.name, site?.profile?.state]);
+  }, [
+    agmarknetLocations,
+    site?.profile?.district,
+    site?.profile?.landSize,
+    site?.profile?.name,
+    site?.profile?.state
+  ]);
 
   useEffect(() => {
-    if (formState.district && !districtOptions.some((district) => district.name === formState.district)) {
+    if (
+      formState.district &&
+      !districtOptions.some((district) => matchesLocationOption(district.name, formState.district))
+    ) {
       setFormState((current) => ({
         ...current,
         district: ""
@@ -4431,7 +4681,7 @@ function ProfilePage({
         title={
           <>
             {translate("Set the")}
-            <span className="bg-gradient-to-r from-slate-950 via-emerald-600 to-cyan-500 bg-clip-text text-transparent">
+            <span className="text-emerald-700">
               {` ${translate("farmer profile and market location")}`}
             </span>
             .
@@ -4456,6 +4706,11 @@ function ProfilePage({
             label: translate("Land size"),
             value: site?.profile?.landSize || translate("Pending"),
             detail: translate("Active record")
+          },
+          {
+            label: translate("Product ID"),
+            value: site?.profile?.productId || FIXED_PROFILE_PRODUCT_ID,
+            detail: translate("Profile record")
           },
           {
             label: translate("Location"),
@@ -4488,6 +4743,16 @@ function ProfilePage({
                 }
                 className="rounded-[1.3rem] border border-slate-200 bg-white px-4 py-3 font-semibold text-slate-900 outline-none"
                 placeholder={translate("Enter farmer name")}
+              />
+            </label>
+
+            <label className="grid gap-2 text-sm">
+              <span className="font-semibold text-slate-700">{translate("Product ID")}</span>
+              <input
+                type="text"
+                value={site?.profile?.productId || FIXED_PROFILE_PRODUCT_ID}
+                readOnly
+                className="rounded-[1.3rem] border border-slate-200 bg-slate-50 px-4 py-3 font-semibold text-slate-700 outline-none"
               />
             </label>
 
@@ -4568,6 +4833,76 @@ function ProfilePage({
   );
 }
 
+function ContactPage({ site, onNavigate, translate = (value) => value }) {
+  const productId = site?.profile?.productId || FIXED_PROFILE_PRODUCT_ID;
+
+  return (
+    <div className="page-transition grid gap-8">
+      <PageHero
+        eyebrow={translate("Contact Us")}
+        title={
+          <>
+            {translate("Connect with")}
+            <span className="text-emerald-700">
+              {` ${translate("AgriCure support")}`}
+            </span>
+            .
+          </>
+        }
+        description={translate("Use the support phone number below and share the product ID so the team can help you quickly.")}
+        secondaryAction={{
+          label: translate("Back to Overview"),
+          onClick: () => onNavigate("/")
+        }}
+        stats={[
+          {
+            label: translate("Support phone"),
+            value: CONTACT_PHONE_NUMBER,
+            detail: translate("Customer assistance")
+          },
+          {
+            label: translate("Product ID"),
+            value: productId,
+            detail: translate("Share this with support")
+          }
+        ]}
+      />
+
+      <SurfaceCard
+        eyebrow={translate("Support details")}
+        title={translate("Contact information")}
+        subtitle={translate("Call the team directly and keep the product ID ready during the conversation.")}
+        elevated
+      >
+        <div className="grid gap-4 md:grid-cols-2">
+          <article className="rounded-[1.5rem] border border-slate-200 bg-slate-50 p-5">
+            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">
+              {translate("Phone number")}
+            </p>
+            <p className="mt-3 text-2xl font-black text-slate-950">{CONTACT_PHONE_NUMBER}</p>
+            <p className="mt-2 text-sm leading-6 text-slate-600">
+              {translate("Available for product setup, platform help, and support queries.")}
+            </p>
+            <div className="mt-5 inline-flex rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-500">
+              {translate("Number hidden for now")}
+            </div>
+          </article>
+
+          <article className="rounded-[1.5rem] border border-emerald-200 bg-emerald-50 p-5">
+            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-emerald-700">
+              {translate("Product ID")}
+            </p>
+            <p className="mt-3 text-2xl font-black text-slate-950">{productId}</p>
+            <p className="mt-2 text-sm leading-6 text-slate-600">
+              {translate("Keep this ID ready when you speak with the AgriCure team.")}
+            </p>
+          </article>
+        </div>
+      </SurfaceCard>
+    </div>
+  );
+}
+
 function ActionPlannerPage({
   cropUi,
   predictedCrops,
@@ -4605,7 +4940,7 @@ function ActionPlannerPage({
         title={
           <>
             {translate("Turn a")}
-            <span className="bg-gradient-to-r from-emerald-600 via-lime-500 to-cyan-500 bg-clip-text text-transparent">
+            <span className="text-emerald-700">
               {` ${translate("crop and seeding date")}`}
             </span>{` ${translate("into a field action calendar.")}`}
           </>
@@ -4793,7 +5128,7 @@ function SensorDataPage({
         title={
           <>
             {translate("A focused telemetry page for")}
-            <span className="bg-gradient-to-r from-cyan-500 via-sky-500 to-emerald-500 bg-clip-text text-transparent">
+            <span className="text-emerald-700">
               {` ${translate("live field monitoring")}`}
             </span>
             .
@@ -4839,6 +5174,7 @@ function SensorDataPage({
                 <RealtimeMetricCard
                   item={item}
                   statusLabel={uiText.realtimePanel.status[item.status]}
+                  tone={resolveRealtimeMetricTone(item, "soil", index)}
                 />
               </Reveal>
             ))}
@@ -4857,6 +5193,7 @@ function SensorDataPage({
               <RealtimeMetricCard
                 item={item}
                 statusLabel={uiText.realtimePanel.status[item.status]}
+                tone={resolveRealtimeMetricTone(item, "environment", index)}
               />
             </Reveal>
           ))}
@@ -5008,7 +5345,7 @@ function PageHero({
                 <button
                   type="button"
                   onClick={primaryAction.onClick}
-                  className="w-full rounded-full bg-[linear-gradient(135deg,#0f172a_0%,#17324d_55%,#1f5c4e_100%)] px-5 py-3 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:brightness-105 sm:w-auto"
+                  className="w-full rounded-full bg-emerald-700 px-5 py-3 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:bg-emerald-800 sm:w-auto"
                 >
                   {primaryAction.label}
                 </button>
@@ -5073,16 +5410,16 @@ function SurfaceCard({ eyebrow, title, subtitle, right, children, elevated = fal
 
 function HealthSignalCard({ dashboard, translate = (value) => value }) {
   return (
-    <article className="hover-lift overflow-hidden rounded-[1.6rem] bg-[linear-gradient(135deg,#0f172a_0%,#16253a_48%,#1f5c4e_100%)] p-4 text-white shadow-ambient sm:rounded-[2rem] sm:p-6">
+    <article className="hover-lift overflow-hidden rounded-[1.6rem] border border-slate-200 bg-white p-4 text-slate-900 shadow-[0_18px_38px_rgba(15,23,42,0.05)] sm:rounded-[2rem] sm:p-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.28em] text-white/55">
+          <p className="text-xs font-semibold uppercase tracking-[0.28em] text-slate-500">
             {translate("Soil status")}
           </p>
           <h3 className="mt-3 font-display text-3xl font-black tracking-[-0.03em] sm:text-4xl">
             {dashboard.overview.soilHealth.score}%
           </h3>
-          <p className="mt-3 max-w-md text-sm leading-7 text-white/78">
+          <p className="mt-3 max-w-md text-sm leading-7 text-slate-600">
             {translate(dashboard.overview.soilHealth.message)}
           </p>
         </div>
@@ -5091,13 +5428,13 @@ function HealthSignalCard({ dashboard, translate = (value) => value }) {
         </span>
       </div>
       <div className="mt-6 space-y-3">
-        <div className="h-3 rounded-full bg-white/12">
+        <div className="h-3 rounded-full bg-slate-100">
           <div
-            className="h-3 rounded-full bg-gradient-to-r from-lime-300 to-cyan-300"
+            className="h-3 rounded-full bg-gradient-to-r from-emerald-400 to-emerald-500"
             style={{ width: `${dashboard.overview.soilHealth.progress}%` }}
           />
         </div>
-        <div className="flex items-center justify-between gap-4 text-sm text-white/74">
+        <div className="flex items-center justify-between gap-4 text-sm text-slate-600">
           <span>{translate(dashboard.overview.soilHealth.support)}</span>
           <span>{formatDateTime(dashboard.overview.timestamp)}</span>
         </div>
@@ -5164,9 +5501,10 @@ function CropPredictionCard({ crop, selectedCropKey, predictedTag, onSelectCrop,
     <button
       type="button"
       onClick={() => onSelectCrop(crop.key)}
+      aria-pressed={isSelected}
       className={`hover-lift rounded-[1.8rem] border p-5 text-left transition ${
         isSelected
-          ? "border-slate-900 bg-[linear-gradient(135deg,#0f172a_0%,#17324d_52%,#1f5c4e_100%)] text-white shadow-soft"
+          ? "border-emerald-300 bg-[linear-gradient(135deg,rgba(236,253,245,0.98)_0%,rgba(255,255,255,0.98)_52%,rgba(236,254,255,0.98)_100%)] text-slate-950 shadow-[0_20px_44px_rgba(31,92,78,0.14)] ring-2 ring-emerald-200/80"
           : "border-slate-200/80 bg-white/92 hover:border-emerald-200 hover:bg-white"
       }`}
     >
@@ -5174,7 +5512,7 @@ function CropPredictionCard({ crop, selectedCropKey, predictedTag, onSelectCrop,
         <div>
           <p
             className={`text-xs font-semibold uppercase tracking-[0.24em] ${
-              isSelected ? "text-white/60" : "text-slate-500"
+              isSelected ? "text-emerald-800" : "text-slate-500"
             }`}
           >
             {predictedTag} • {translate(crop.family)}
@@ -5183,17 +5521,19 @@ function CropPredictionCard({ crop, selectedCropKey, predictedTag, onSelectCrop,
         </div>
         <span
           className={`rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] ${
-            isSelected ? "bg-white/10 text-white" : "bg-emerald-100 text-emerald-700"
+            isSelected
+              ? "bg-[linear-gradient(135deg,#065f46_0%,#0f766e_100%)] text-white shadow-sm"
+              : "bg-emerald-100 text-emerald-700"
           }`}
         >
           {formatCurrency(crop.marketPrice)}
         </span>
       </div>
-      <p className={`mt-3 text-sm leading-7 ${isSelected ? "text-white/78" : "text-slate-600"}`}>
+      <p className={`mt-3 text-sm leading-7 ${isSelected ? "text-slate-700" : "text-slate-600"}`}>
         {translate(crop.reason)}
       </p>
       {crop.marketSource ? (
-        <p className={`mt-2 text-xs ${isSelected ? "text-white/60" : "text-slate-500"}`}>
+        <p className={`mt-2 text-xs ${isSelected ? "text-slate-600" : "text-slate-500"}`}>
           {`${crop.marketSource.source} • ${crop.marketSource.marketName}, ${
             crop.marketSource.stateName
           } • ${formatDateLong(crop.marketSource.lastReportedDate)}`}
@@ -5616,7 +5956,7 @@ function PlannerCalendar({
   );
 }
 
-function SensorValueSection({ title, subtitle, items, statusMap }) {
+function SensorValueSection({ title, subtitle, items, statusMap, cardKind }) {
   return (
     <article className="rounded-[1.9rem] border border-slate-200 bg-white p-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -5630,7 +5970,11 @@ function SensorValueSection({ title, subtitle, items, statusMap }) {
       <div className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
         {items.map((item, index) => (
           <Reveal key={`${title}-${item.label}`} delay={80 + index * 50}>
-            <RealtimeMetricCard item={item} statusLabel={statusMap?.[item.status] || item.status} />
+            <RealtimeMetricCard
+              item={item}
+              statusLabel={statusMap?.[item.status] || item.status}
+              tone={resolveRealtimeMetricTone(item, cardKind, index)}
+            />
           </Reveal>
         ))}
       </div>
@@ -5644,53 +5988,125 @@ function RecommendationColumn({
   boxed = true,
   showPricing = true,
   showCostStats = true,
+  marketplaceKind = "",
   translate = (value) => value
 }) {
   const totals = showCostStats ? buildRecommendationCostTotals(items) : null;
+  const actionableMarketplaceItems = items
+    .map((item, index) => {
+      const nutrientKey = FERTILIZER_MARKETPLACE_NUTRIENT_KEYS[index];
+
+      if (!nutrientKey || isPausedRecommendation(item)) {
+        return null;
+      }
+
+      return getMarketplaceProduct(marketplaceKind, nutrientKey);
+    })
+    .filter(Boolean);
+
+  function handleBuyTotalPlan() {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    actionableMarketplaceItems.forEach((product) => {
+      window.open(product.url, "_blank", "noopener,noreferrer");
+    });
+  }
 
   return (
     <article className={boxed ? "rounded-[1.9rem] border border-slate-200 bg-white p-5" : ""}>
       <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">{title}</p>
       <div className="mt-4 grid gap-4">
-        {items.map((item) => (
-          <article key={item.title} className="rounded-[1.7rem] border border-slate-100 bg-slate-50 p-4">
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <div>
-                <h3 className="font-display text-xl font-bold text-slate-950">{item.title}</h3>
-                <p className="mt-2 text-sm font-semibold text-slate-700">{item.fertilizer}</p>
+        {items.map((item, index) => {
+          const nutrientKey = FERTILIZER_MARKETPLACE_NUTRIENT_KEYS[index];
+          const marketplaceProduct = nutrientKey
+            ? getMarketplaceProduct(marketplaceKind, nutrientKey)
+            : null;
+          const canBuy = Boolean(marketplaceProduct) && !isPausedRecommendation(item);
+
+          return (
+            <article key={item.title} className="rounded-[1.7rem] border border-slate-100 bg-slate-50 p-4">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <h3 className="font-display text-xl font-bold text-slate-950">{item.title}</h3>
+                  <p className="mt-2 text-sm font-semibold text-slate-700">{item.fertilizer}</p>
+                </div>
+                <span className={`status-pill status-pill--${priorityTone(item.priority)}`}>
+                  {item.priority}
+                </span>
               </div>
-              <span className={`status-pill status-pill--${priorityTone(item.priority)}`}>
-                {item.priority}
-              </span>
-            </div>
-            <p className="mt-3 text-sm leading-7 text-slate-600">{item.detail}</p>
-            <div className="mt-4 grid gap-3 sm:grid-cols-2">
-              <MiniStat label={translate("Content")} value={item.nutrientContent} />
-              <MiniStat label={translate("Rate")} value={item.applicationRate} />
-              {item.brandExamples?.length ? (
-                <MiniStat
-                  label={translate("Brand examples")}
-                  value={item.brandExamples.join(", ")}
-                />
-              ) : null}
-              {showPricing ? <MiniStat label={translate("Price range")} value={item.priceRange} /> : null}
-              {showCostStats ? <MiniStat label={translate("Cost / acre")} value={item.costSummary.estimated} /> : null}
-              {showCostStats ? <MiniStat label={translate("Total plan")} value={item.costSummary.total} /> : null}
-            </div>
-            <p className="mt-4 rounded-[1.2rem] bg-white px-4 py-3 text-sm text-slate-600">
-              {item.note}
-            </p>
-          </article>
-        ))}
+              <p className="mt-3 text-sm leading-7 text-slate-600">{item.detail}</p>
+              <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                <MiniStat label={translate("Content")} value={item.nutrientContent} />
+                <MiniStat label={translate("Rate")} value={item.applicationRate} />
+                {item.brandExamples?.length ? (
+                  <MiniStat
+                    label={translate("Brand examples")}
+                    value={item.brandExamples.join(", ")}
+                  />
+                ) : null}
+                {showPricing ? <MiniStat label={translate("Price range")} value={item.priceRange} /> : null}
+                {showCostStats ? <MiniStat label={translate("Cost / acre")} value={item.costSummary.estimated} /> : null}
+                {showCostStats ? <MiniStat label={translate("Total plan")} value={item.costSummary.total} /> : null}
+              </div>
+              <p className="mt-4 rounded-[1.2rem] bg-white px-4 py-3 text-sm text-slate-600">
+                {item.note}
+              </p>
+              <div className="mt-4 flex flex-wrap items-center gap-3">
+                {canBuy ? (
+                  <a
+                    href={marketplaceProduct.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="rounded-full bg-[linear-gradient(135deg,#065f46_0%,#0f766e_100%)] px-4 py-2 text-sm font-semibold text-white transition hover:brightness-105"
+                  >
+                    {translate("Buy on BigHaat")}
+                  </a>
+                ) : (
+                  <span className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-500">
+                    {translate("No purchase needed")}
+                  </span>
+                )}
+                {canBuy ? (
+                  <span className="text-xs text-slate-500">
+                    {translate("Opens")} {marketplaceProduct.productLabel} {translate("on BigHaat")}
+                  </span>
+                ) : null}
+              </div>
+            </article>
+          );
+        })}
         {showCostStats && items.length ? (
-          <article className="rounded-[1.7rem] border border-slate-200 bg-slate-950 p-5 text-white">
-            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-white/60">
+          <article className="rounded-[1.7rem] border border-emerald-200 bg-[linear-gradient(180deg,#f8fffb_0%,#dcfce7_100%)] p-5 text-slate-900">
+            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-emerald-700">
               {translate("Total plan")}
             </p>
             <h3 className="mt-3 font-display text-2xl font-bold">{title}</h3>
             <div className="mt-4 grid gap-3 sm:grid-cols-2">
-              <MiniStat label={translate("Cost / acre")} value={totals.estimated} dark />
-              <MiniStat label={translate("Total plan")} value={totals.total} dark />
+              <MiniStat label={translate("Cost / acre")} value={totals.estimated} />
+              <MiniStat label={translate("Total plan")} value={totals.total} />
+            </div>
+            <div className="mt-4 flex flex-wrap items-center gap-3">
+              {actionableMarketplaceItems.length ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={handleBuyTotalPlan}
+                    className="rounded-full bg-[linear-gradient(135deg,#065f46_0%,#0f766e_100%)] px-4 py-2 text-sm font-semibold text-white transition hover:brightness-105"
+                  >
+                    {translate("Buy total on BigHaat")}
+                  </button>
+                  <span className="text-xs text-slate-600">
+                    {translate("Opens the recommended")} {actionableMarketplaceItems.length}{" "}
+                    {translate("product pages in new tabs.")}
+                  </span>
+                </>
+              ) : (
+                <span className="rounded-full border border-emerald-200 bg-white/80 px-4 py-2 text-sm font-semibold text-slate-600">
+                  {translate("No purchase needed right now")}
+                </span>
+              )}
             </div>
           </article>
         ) : null}
@@ -5700,6 +6116,41 @@ function RecommendationColumn({
 }
 
 const FERTILIZER_FOCUS_LABELS = ["Nitrogen", "Phosphorus", "Potassium"];
+const FERTILIZER_MARKETPLACE_NUTRIENT_KEYS = ["nitrogen", "phosphorus", "potassium"];
+const FERTILIZER_MARKETPLACE_PRODUCTS = {
+  inorganic: {
+    nitrogen: {
+      productLabel: "IFFCO Nano Urea",
+      url: "https://www.bighaat.com/products/iffco-nano-urea?variant=40999565164567"
+    },
+    phosphorus: {
+      productLabel: "Katra Urea Phosphate 17-44-00",
+      url: "https://www.bighaat.com/products/katra-urea-phosphate-17-44-00?variant=41908173733911"
+    },
+    potassium: {
+      productLabel: "Agriventure NPK 00-00-50",
+      url: "https://www.bighaat.com/products/agriventure-npk-00-00-50-fertilizer?variant=41911008657431"
+    }
+  },
+  organic: {
+    nitrogen: {
+      productLabel: "Amruth Neem Powder",
+      url: "https://www.bighaat.com/products/amruth-neem-powder?variant=42260901330967"
+    },
+    phosphorus: {
+      productLabel: "Gloryfert PROM",
+      url: "https://www.bighaat.com/products/gloryfert-prom-organic-fertilizers?variant=40454319046679"
+    },
+    potassium: {
+      productLabel: "Speed Kompost",
+      url: "https://www.bighaat.com/products/speed-kompost?variant=40639842353175"
+    }
+  }
+};
+
+function getMarketplaceProduct(kind, nutrientKey) {
+  return FERTILIZER_MARKETPLACE_PRODUCTS[kind]?.[nutrientKey] || null;
+}
 
 function isPausedRecommendation(item) {
   const fertilizer = String(item?.fertilizer || "").toLowerCase();
@@ -5708,9 +6159,9 @@ function isPausedRecommendation(item) {
 
 function buildOrganicAlternativeItems(organicItems = [], inorganicItems = []) {
   return organicItems.map((item, index) => ({
-    eyebrow: `${FERTILIZER_FOCUS_LABELS[index] || `Plan ${index + 1}`} support`,
-    title: item.title,
-    altFertilizer: `Alternative to ${inorganicItems[index]?.fertilizer || "synthetic fertilizer"}`,
+    eyebrow: `${FERTILIZER_FOCUS_LABELS[index] || `Plan ${index + 1}`} organic option`,
+    title: `${FERTILIZER_FOCUS_LABELS[index] || `Plan ${index + 1}`} organic alternative`,
+    fertilizerName: item.fertilizer || "Organic fertilizer",
     description: item.detail,
     note: item.note,
     applicationRate: item.applicationRate
@@ -5758,6 +6209,86 @@ function buildApplicationTimingItems(organicItems = [], inorganicItems = [], sel
   });
 }
 
+const SOIL_STATUS_BACKGROUND_RULES = [
+  { min: 24, max: 44 },
+  { min: 18, max: 40 },
+  { min: 80, max: 160 },
+  { min: 6.2, max: 7.5 }
+];
+
+const ENVIRONMENT_CARD_TONES = ["orange", "teal", "amber"];
+
+function readMetricNumber(value) {
+  const match = String(value ?? "").match(/-?\d+(\.\d+)?/);
+  return match ? Number.parseFloat(match[0]) : Number.NaN;
+}
+
+function resolveSoilMetricTone(value, index, fallbackTone = "slate") {
+  const rule = SOIL_STATUS_BACKGROUND_RULES[index];
+
+  if (!rule) {
+    return fallbackTone;
+  }
+
+  const numericValue = readMetricNumber(value);
+
+  if (!Number.isFinite(numericValue)) {
+    return fallbackTone;
+  }
+
+  if (numericValue < rule.min) {
+    return "rose";
+  }
+
+  if (numericValue > rule.max) {
+    return "sky";
+  }
+
+  return "emerald";
+}
+
+function resolveWeatherMetricTone(item, index) {
+  const key = String(item?.key || item?.label || "").toLowerCase();
+
+  if (key.includes("humidity")) {
+    return "teal";
+  }
+
+  if (key.includes("flux") || key.includes("sunlight")) {
+    return "amber";
+  }
+
+  if (key.includes("temperature")) {
+    return "orange";
+  }
+
+  return ENVIRONMENT_CARD_TONES[index % ENVIRONMENT_CARD_TONES.length];
+}
+
+function resolveRealtimeMetricTone(item, cardKind, index) {
+  if (cardKind === "soil") {
+    return resolveSoilMetricTone(item?.value, index);
+  }
+
+  if (cardKind === "environment") {
+    return resolveWeatherMetricTone(item, index);
+  }
+
+  return "slate";
+}
+
+function resolveOverviewMetricTone(item, section, index) {
+  if (section === "soil") {
+    return resolveSoilMetricTone(item?.value, index, item?.tone || "slate");
+  }
+
+  if (section === "environment") {
+    return resolveWeatherMetricTone(item, index);
+  }
+
+  return item?.tone || "slate";
+}
+
 function MiniStat({ label, value, dark = false }) {
   return (
     <div className={`rounded-[1.2rem] px-4 py-3 ${dark ? "bg-white/10" : "bg-white"}`}>
@@ -5775,11 +6306,13 @@ function MiniStat({ label, value, dark = false }) {
   );
 }
 
-function RealtimeMetricCard({ item, statusLabel }) {
+function RealtimeMetricCard({ item, statusLabel, tone = "slate" }) {
   return (
-    <article className="hover-lift rounded-[1.8rem] border border-slate-200 bg-white p-5">
+    <article
+      className={`hover-lift rounded-[1.8rem] border p-5 ${toneBorder(tone)} ${toneSurface(tone)}`}
+    >
       <div className="flex items-start justify-between gap-4">
-        <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">
+        <p className={`text-xs font-semibold uppercase tracking-[0.24em] ${toneText(tone)}`}>
           {item.label}
         </p>
         <span className={`status-pill status-pill--${metricStatusTone(item.status)}`}>

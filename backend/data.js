@@ -227,6 +227,8 @@ const defaultUiText = {
   }
 };
 
+const FIXED_PROFILE_PRODUCT_ID = "AGC-PRODUCT-001";
+
 const defaultSiteData = {
   brand: "AgriCure",
   title: "Dashboard",
@@ -242,6 +244,7 @@ const defaultSiteData = {
     name: "Test User",
     role: "Farm Manager",
     farm: "Mandapam Demonstration Farm",
+    productId: FIXED_PROFILE_PRODUCT_ID,
     landSize: "",
     state: "",
     district: ""
@@ -378,7 +381,8 @@ function buildSiteData(statePayload = {}) {
     languages: defaultSiteData.languages.map((language) => ({ ...language })),
     profile: {
       ...defaultSiteData.profile,
-      ...(statePayload.profile || {})
+      ...(statePayload.profile || {}),
+      productId: FIXED_PROFILE_PRODUCT_ID
     },
     uiText: {
       ...defaultUiText,
